@@ -1,20 +1,27 @@
 # -------- BUILD STAGE --------
-FROM gradle:8.5-jdk17 AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-COPY build.gradle settings.gradle ./
-COPY gradle ./gradle
-COPY gradlew .
-RUN chmod +x gradlew
+# Copy Maven wrapper and pom.xml
+COPY .mvn ./.mvn
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw
 
+# Download dependencies (cached layer)
+RUN ./mvnw dependency:go-offline -B
+
+# Copy source code
 COPY src ./src
-RUN ./gradlew bootJar --no-daemon
+
+# Build the application
+RUN ./mvnw clean package -DskipTests
 
 # -------- RUN STAGE --------
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
-COPY --from=build /app/build/libs/*.jar app.jar
+# Copy the built JAR from Maven target directory
+COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","app.jar"]
