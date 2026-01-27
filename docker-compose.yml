@@ -7,13 +7,16 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
       - SPRING_DATASOURCE_USERNAME=postgres.levgjidflauapuruzrsp
       - SPRING_DATASOURCE_PASSWORD=Tiforge@123
       - CLERK_SECRET_KEY=sk_test_5OUIw2E454IC3UVvkKn10YwKHlb02GBjdhnIY3mNvA
     restart: unless-stopped
     networks:
       - trustchain-network
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
 
   frontend:
     build: ./frontend

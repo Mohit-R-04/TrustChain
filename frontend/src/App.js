@@ -9,6 +9,7 @@ import DonorDashboard from './pages/DonorDashboard';
 import GovernmentDashboard from './pages/GovernmentDashboard';
 import NGODashboard from './pages/NGODashboard';
 import VendorDashboard from './pages/VendorDashboard';
+import VendorKycPage from './pages/VendorKycPage';
 import AuditorDashboard from './pages/AuditorDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthCallback from './components/AuthCallback';
@@ -186,6 +187,14 @@ function App() {
             element={
               <ProtectedRoute allowedRole="vendor">
                 <VendorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor-kyc"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorKycPage />
               </ProtectedRoute>
             }
           />
