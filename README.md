@@ -2,7 +2,7 @@
 
 A full-stack application for transparent NGO fund management using blockchain technology, built with Spring Boot and React.
 
-## 🏗️ Architecture
+## 🏗️ Architecturee
 
 - **Backend:** Spring Boot 3.2.1 (Java 17)
 - **Frontend:** React 19.2.4
