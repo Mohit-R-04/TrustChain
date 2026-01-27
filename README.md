@@ -4,46 +4,30 @@ A full-stack application for transparent NGO fund management using blockchain te
 
 ## 🏗️ Architecture
 
-- **Backend:** Spring Boot 3.2.1 (Java 17) with Firebase Authentication
+- **Backend:** Spring Boot 3.2.1 (Java 17)
 - **Frontend:** React 19.2.4
 - **Containerization:** Docker & Docker Compose
-- **Authentication:** Firebase Admin SDK
 - **Build Tools:** Maven (Backend), npm (Frontend)
 
 ## 📋 Prerequisites
 
 - Docker & Docker Compose
-- Firebase Project with Service Account Key
 - Java 17 (for local development)
 - Node.js 18+ (for local development)
-
-## 🔥 Firebase Setup (REQUIRED)
-
-**This is the most critical step before running the application!**
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project or select an existing one
-3. Navigate to **Project Settings** → **Service Accounts**
-4. Click **"Generate New Private Key"**
-5. Download the JSON file and rename it to `firebase-key.json`
-6. Place it in: `backend/firebase-key.json`
-7. **Important:** Never commit this file to git (already in .gitignore)
 
 ## 🚀 Quick Start
 
 ### Using Docker (Recommended)
 
 ```bash
-# 1. Clone and navigate to the project
-cd /Users/mohitreddy/Documents/TrustChain
+# 1. Clone the repository
+git clone https://github.com/Mohit-R-04/TrustChain.git
+cd TrustChain
 
-# 2. Ensure Firebase key is in place
-ls backend/firebase-key.json
+# 2. Build and start all services
+docker compose up --build
 
-# 3. Build and start all services
-docker-compose up --build
-
-# 4. Access the application
+# 3. Access the application
 # Frontend: http://localhost:3000
 # Backend API: http://localhost:8080
 ```
@@ -53,7 +37,6 @@ docker-compose up --build
 #### Backend:
 ```bash
 cd backend
-export FIREBASE_CONFIG_PATH=./firebase-key.json
 ./mvnw spring-boot:run
 ```
 
@@ -86,13 +69,12 @@ TrustChain/
 │   │       │   └── com/trustchain/backend/
 │   │       │       ├── TrustchainApplication.java
 │   │       │       ├── config/
-│   │       │       │   └── FirebaseConfig.java
+│   │       │       │   └── SecurityConfig.java
 │   │       │       └── controller/
 │   │       │           └── HelloController.java
 │   │       └── resources/
 │   ├── pom.xml
-│   ├── Dockerfile
-│   └── firebase-key.json       # ⚠️ YOU NEED TO ADD THIS
+│   └── Dockerfile
 ├── frontend/                   # React Frontend
 │   ├── src/
 │   │   ├── App.js
@@ -111,12 +93,7 @@ TrustChain/
 
 **Frontend (`.env`):**
 ```env
-REACT_APP_API_URL=http://backend:8080
-```
-
-**Backend (docker-compose.yml):**
-```yaml
-FIREBASE_CONFIG_PATH=/app/firebase-key.json
+REACT_APP_API_URL=http://localhost:8080
 ```
 
 ## 📦 Key Dependencies
@@ -125,7 +102,6 @@ FIREBASE_CONFIG_PATH=/app/firebase-key.json
 - Spring Boot Web
 - Spring Boot Security
 - Spring Boot Validation
-- Firebase Admin SDK 9.2.0
 - Spring DevTools
 
 ### Frontend:
@@ -135,30 +111,24 @@ FIREBASE_CONFIG_PATH=/app/firebase-key.json
 
 ## 🛠️ Development Workflows
 
-### Build the project:
-```bash
-# Using the custom workflow
-# (Assumes Maven is configured)
-```
-
 ### Stop all services:
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### View logs:
 ```bash
 # All services
-docker-compose logs -f
+docker compose logs -f
 
 # Specific service
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ### Rebuild after changes:
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 ## 📚 API Documentation
@@ -172,8 +142,8 @@ docker-compose up --build
 
 ## 🔒 Security Notes
 
-- Firebase service account key is sensitive - never commit to git
-- CORS configuration needed for production
+- CORS is configured for localhost:3000
+- CSRF disabled for development (enable for production)
 - Implement proper authentication before deployment
 - Use HTTPS in production
 - Validate all user inputs
@@ -182,16 +152,12 @@ docker-compose up --build
 
 1. ✅ Project structure setup
 2. ✅ Docker configuration
-3. ✅ Firebase integration setup
+3. ✅ Basic security configuration
 4. ⏳ Implement user authentication
 5. ⏳ Design and implement database schema
 6. ⏳ Create NGO management APIs
 7. ⏳ Build frontend components
 8. ⏳ Integrate blockchain for transaction transparency
-
-## 📖 Additional Documentation
-
-See `PROJECT_BLUEPRINT_CHECKLIST.md` for a comprehensive setup checklist and development roadmap.
 
 ## 🤝 Contributing
 
@@ -207,5 +173,5 @@ For issues or questions, please refer to the project documentation or create an 
 
 ---
 
-**Status:** ✅ Ready for development (pending Firebase key setup)  
+**Status:** ✅ Ready for development  
 **Last Updated:** January 27, 2026
