@@ -1,0 +1,126 @@
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 32px;
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left {
+    flex: 1;
+}
+
+.logo-small {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logo-icon-small {
+    font-size: 24px;
+}
+
+.logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(var(--role-color), 0.1);
+    border: 1px solid var(--role-color);
+    border-radius: 20px;
+    color: #fff;
+}
+
+.role-icon-badge {
+    font-size: 18px;
+}
+
+.role-name-badge {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.header-right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.user-email {
+    font-size: 14px;
+    color: #94a3b8;
+}
+
+.logout-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+    filter: brightness(1.1);
+}
+
+.logout-icon {
+    font-size: 16px;
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+    }
+
+    .header-left,
+    .header-center,
+    .header-right {
+        flex: auto;
+    }
+
+    .header-center {
+        order: 3;
+        width: 100%;
+        margin-top: 12px;
+    }
+
+    .user-email {
+        display: none;
+    }
+}

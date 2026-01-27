@@ -3,16 +3,33 @@ version: "3.8"
 services:
   backend:
     build: ./backend
-    container_name: spring-backend
+    container_name: trustchain-backend
     ports:
       - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://aws-1-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0
+      - SPRING_DATASOURCE_USERNAME=postgres.levgjidflauapuruzrsp
+      - SPRING_DATASOURCE_PASSWORD=Tiforge@123
+      - CLERK_SECRET_KEY=sk_test_5OUIw2E454IC3UVvkKn10YwKHlb02GBjdhnIY3mNvA
     restart: unless-stopped
+    networks:
+      - trustchain-network
 
   frontend:
     build: ./frontend
-    container_name: react-frontend
+    container_name: trustchain-frontend
     ports:
       - "3000:3000"
+    environment:
+      - REACT_APP_CLERK_PUBLISHABLE_KEY=pk_test_YWN0aXZlLWxhZHliaXJkLTk1LmNsZXJrLmFjY291bnRzLmRldiQ
+      # React runs in BROWSER, not container, so use localhost for host machine access
+      - REACT_APP_API_URL=http://localhost:8080
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - trustchain-network
+
+networks:
+  trustchain-network:
+    driver: bridge

@@ -1,21 +1,209 @@
-import { useEffect, useState } from "react";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ClerkProvider, SignedIn, SignedOut, SignIn, SignUp, RedirectToSignIn } from '@clerk/clerk-react';
+
+// Pages
+import HomePage from './pages/HomePage';
+import CitizenPage from './pages/CitizenPage';
+import DonorDashboard from './pages/DonorDashboard';
+import GovernmentDashboard from './pages/GovernmentDashboard';
+import NGODashboard from './pages/NGODashboard';
+import VendorDashboard from './pages/VendorDashboard';
+import AuditorDashboard from './pages/AuditorDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
+import AuthCallback from './components/AuthCallback';
+
+// Get Clerk publishable key from environment variable
+const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
 function App() {
-  const [msg, setMsg] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/api/hello`)
-      .then(res => res.text())
-      .then(data => setMsg(data))
-      .catch(err => setError("Failed to connect to backend. Make sure it's running on port 8080."));
-  }, []);
+  if (!clerkPubKey) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: '#0f172a',
+        color: '#ef4444',
+        fontSize: '18px',
+        padding: '20px',
+        textAlign: 'center'
+      }}>
+        <div>
+          <h2>⚠️ Configuration Error</h2>
+          <p>Please add your Clerk Publishable Key to the .env file:</p>
+          <code style={{ background: '#1e293b', padding: '10px', borderRadius: '8px', display: 'block', marginTop: '10px' }}>
+            REACT_APP_CLERK_PUBLISHABLE_KEY=your_key_here
+          </code>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1>React + Spring Boot + Docker</h1>
-      {error ? <p style={{ color: 'red' }}>{error}</p> : <p>{msg || "Loading..."}</p>}
-    </div>
+    <ClerkProvider publishableKey={clerkPubKey}>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/citizen" element={<CitizenPage />} />
+
+          {/* Clerk Authentication Pages */}
+          <Route
+            path="/sign-in/*"
+            element={
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '100vh',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                position: 'relative'
+              }}>
+                <button
+                  onClick={() => window.history.back()}
+                  style={{
+                    position: 'absolute',
+                    top: '20px',
+                    left: '20px',
+                    padding: '12px 20px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.3s ease',
+                    fontFamily: 'Inter, sans-serif'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.transform = 'translateX(-2px)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
+                >
+                  <span>←</span> Back
+                </button>
+                <SignIn
+                  routing="path"
+                  path="/sign-in"
+                  afterSignInUrl="/auth-callback"
+                  afterSignUpUrl="/auth-callback"
+                />
+              </div>
+            }
+          />
+          <Route
+            path="/sign-up/*"
+            element={
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '100vh',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                position: 'relative'
+              }}>
+                <button
+                  onClick={() => window.history.back()}
+                  style={{
+                    position: 'absolute',
+                    top: '20px',
+                    left: '20px',
+                    padding: '12px 20px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '10px',
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.3s ease',
+                    fontFamily: 'Inter, sans-serif'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.transform = 'translateX(-2px)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
+                >
+                  <span>←</span> Back
+                </button>
+                <SignUp
+                  routing="path"
+                  path="/sign-up"
+                  afterSignInUrl="/auth-callback"
+                  afterSignUpUrl="/auth-callback"
+                />
+              </div>
+            }
+          />
+
+          {/* Auth Callback - handles redirect after Clerk authentication */}
+          <Route path="/auth-callback" element={<AuthCallback />} />
+
+          {/* Protected Role-Based Routes */}
+          <Route
+            path="/donor-dashboard"
+            element={
+              <ProtectedRoute allowedRole="donor">
+                <DonorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/government-dashboard"
+            element={
+              <ProtectedRoute allowedRole="government">
+                <GovernmentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ngo-dashboard"
+            element={
+              <ProtectedRoute allowedRole="ngo">
+                <NGODashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/vendor-dashboard"
+            element={
+              <ProtectedRoute allowedRole="vendor">
+                <VendorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/auditor-dashboard"
+            element={
+              <ProtectedRoute allowedRole="auditor">
+                <AuditorDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </ClerkProvider>
   );
 }
 
