@@ -1,17 +1,25 @@
 package com.trustchain.backend.controller;
 
 import com.trustchain.backend.annotation.RequireRole;
+import com.trustchain.backend.model.Auditor;
 import com.trustchain.backend.model.UserRole;
+import com.trustchain.backend.service.AuditorService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auditor")
 public class AuditorController {
+
+    @Autowired
+    private AuditorService auditorService;
 
     @GetMapping("/dashboard")
     @RequireRole(UserRole.AUDITOR)
@@ -58,5 +66,36 @@ public class AuditorController {
         response.put("userId", authentication.getName());
         response.put("reports", new Object[] {});
         return ResponseEntity.ok(response);
+    }
+
+    // CRUD Endpoints
+    @GetMapping
+    public ResponseEntity<List<Auditor>> getAllAuditors() {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Auditor> getAuditorById(@PathVariable UUID id) {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @PostMapping
+    public ResponseEntity<Auditor> createAuditor(@RequestBody Auditor auditor) {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Auditor> updateAuditor(@PathVariable UUID id, @RequestBody Auditor auditor) {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAuditor(@PathVariable UUID id) {
+        // TODO: Implement endpoint
+        return null;
     }
 }

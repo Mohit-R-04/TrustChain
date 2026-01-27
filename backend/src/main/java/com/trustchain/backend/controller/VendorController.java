@@ -2,16 +2,24 @@ package com.trustchain.backend.controller;
 
 import com.trustchain.backend.annotation.RequireRole;
 import com.trustchain.backend.model.UserRole;
+import com.trustchain.backend.model.Vendor;
+import com.trustchain.backend.service.VendorService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/vendor")
 public class VendorController {
+
+    @Autowired
+    private VendorService vendorService;
 
     @GetMapping("/dashboard")
     @RequireRole(UserRole.VENDOR)
@@ -55,5 +63,36 @@ public class VendorController {
         response.put("userId", authentication.getName());
         response.put("payments", new Object[] {});
         return ResponseEntity.ok(response);
+    }
+
+    // CRUD Endpoints
+    @GetMapping
+    public ResponseEntity<List<Vendor>> getAllVendors() {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Vendor> getVendorById(@PathVariable UUID id) {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @PostMapping
+    public ResponseEntity<Vendor> createVendor(@RequestBody Vendor vendor) {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Vendor> updateVendor(@PathVariable UUID id, @RequestBody Vendor vendor) {
+        // TODO: Implement endpoint
+        return null;
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteVendor(@PathVariable UUID id) {
+        // TODO: Implement endpoint
+        return null;
     }
 }
