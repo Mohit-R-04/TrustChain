@@ -9,5 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface DonorRepository extends JpaRepository<Donor, UUID> {
-    Optional<Donor> findByAuthId(String authId);
+    Optional<Donor> findByUserId(String userId);
+
+    Optional<Donor> findByEmail(String email);
 }

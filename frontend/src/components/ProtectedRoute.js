@@ -39,8 +39,17 @@ const ProtectedRoute = ({ children, allowedRole }) => {
         return <Navigate to="/sign-in" replace />;
     }
 
-    // Get user's role
+    // Get user's role from Clerk metadata
     const userRole = user.publicMetadata?.role || user.unsafeMetadata?.role;
+
+    // Check if user just assigned this role (stored temporarily during signup)
+    const justAssignedRole = sessionStorage.getItem('justAssignedRole');
+
+    // If user just assigned this role, allow access and clear the flag
+    if (justAssignedRole === allowedRole) {
+        sessionStorage.removeItem('justAssignedRole');
+        return children;
+    }
 
     // Check if user has the allowed role
     if (userRole !== allowedRole) {

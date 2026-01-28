@@ -15,6 +15,7 @@ import AuditorDashboard from './pages/AuditorDashboard';
 import StripePayment from './pages/StripePayment';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthCallback from './components/AuthCallback';
+import ClearUserRole from './components/ClearUserRole';
 
 // Get Clerk publishable key from environment variable
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
@@ -208,6 +209,9 @@ function App() {
 
             {/* Auth Callback - handles redirect after Clerk authentication */}
             <Route path="/auth-callback" element={<AuthCallback />} />
+
+            {/* Admin Utility - Clear User Role */}
+            <Route path="/clear-role" element={<ClearUserRole />} />
 
             {/* Protected Role-Based Routes */}
             <Route

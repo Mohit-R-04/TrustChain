@@ -27,7 +27,7 @@ public class DonationService {
 
     @Autowired
     private SchemeRepository schemeRepository;
-    
+
     @Autowired
     private DonorRepository donorRepository;
 
@@ -40,7 +40,7 @@ public class DonationService {
         long activeProjects = donations.stream().map(Donation::getScheme).distinct().count();
         // Assuming verified if transactionRef is present (which is always true for now)
         long verifiedTransactions = donations.size();
-        
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalDonations", totalDonations);
         stats.put("activeProjects", activeProjects);
@@ -73,9 +73,10 @@ public class DonationService {
         }
 
         // Ensure donor exists
-        Donor donor = donorRepository.findByAuthId(donorAuthId)
+        Donor donor = donorRepository.findByUserId(donorAuthId)
                 .orElseGet(() -> {
                     Donor newDonor = new Donor();
+                    newDonor.setUserId(donorAuthId);
                     newDonor.setName("Donor " + donorAuthId.substring(0, 5)); // Placeholder name
                     newDonor.setEmail("donor@example.com"); // Placeholder
                     return donorRepository.save(newDonor);
@@ -94,7 +95,7 @@ public class DonationService {
         donation.setTimestamp(java.time.LocalDateTime.now());
         donation.setTransactionRef(paymentService.generateTransactionReference());
         donation.setStatus("COMPLETED");
-        
+
         return donationRepository.save(donation);
     }
 

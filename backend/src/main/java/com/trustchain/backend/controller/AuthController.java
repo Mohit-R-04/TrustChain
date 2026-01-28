@@ -73,17 +73,10 @@ public class AuthController {
             // Get user ID and email from token
             String userId = jwtTokenValidator.getUserIdFromToken(token);
 
-            // Check if user already has a role
-            String existingRole = jwtTokenValidator.getRoleFromToken(token);
-
-            if (existingRole != null && !existingRole.equals("citizen")) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of(
-                                "error", "User already has a role assigned",
-                                "existingRole", existingRole,
-                                "message", "A user cannot have multiple roles. You are already registered as "
-                                        + existingRole.toUpperCase()));
-            }
+            // NOTE: We don't check JWT token role here because the DATABASE is the source
+            // of truth
+            // If database is flushed, user should be able to re-register even if JWT still
+            // has old role
 
             // Validate requested role
             String requestedRole = request.getRole();
@@ -106,6 +99,48 @@ public class AuthController {
             String email = (emailFromToken != null && !emailFromToken.isEmpty())
                     ? emailFromToken
                     : emailFromRequest;
+
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Email is required"));
+            }
+
+            // Check if email already exists in ANY role table
+            String existingRoleForEmail = null;
+
+            if (donorRepository.findByEmail(email).isPresent()) {
+                existingRoleForEmail = "donor";
+            } else if (governmentRepository.findByEmail(email).isPresent()) {
+                existingRoleForEmail = "government";
+            } else if (ngoRepository.findByEmail(email).isPresent()) {
+                existingRoleForEmail = "ngo";
+            } else if (vendorRepository.findByEmail(email).isPresent()) {
+                existingRoleForEmail = "vendor";
+            } else if (auditorRepository.findByEmail(email).isPresent()) {
+                existingRoleForEmail = "auditor";
+            }
+
+            // If email exists with a different role, reject the request
+            if (existingRoleForEmail != null && !existingRoleForEmail.equalsIgnoreCase(requestedRole)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of(
+                                "error", "Email already registered with a different role",
+                                "existingRole", existingRoleForEmail,
+                                "attemptedRole", requestedRole,
+                                "message", "This email is already registered as " + existingRoleForEmail.toUpperCase()
+                                        + ". Each email can only have one role. Please use a different email address."));
+            }
+
+            // If email exists with the same role, just return success (idempotent)
+            if (existingRoleForEmail != null && existingRoleForEmail.equalsIgnoreCase(requestedRole)) {
+                RoleAssignmentResponse response = new RoleAssignmentResponse();
+                response.setSuccess(true);
+                response.setUserId(userId);
+                response.setAssignedRole(requestedRole);
+                response.setMessage("Role already assigned");
+                return ResponseEntity.ok(response);
+            }
+
             String providedName = request.getName();
             String effectiveName = (providedName != null && !providedName.trim().isEmpty())
                     ? providedName.trim()
@@ -172,6 +207,67 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to assign role: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/user-role")
+    public ResponseEntity<?> getUserRole(HttpServletRequest httpRequest) {
+        try {
+            // Extract token from Authorization header
+            String authHeader = httpRequest.getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Missing or invalid authorization token"));
+            }
+
+            String token = authHeader.substring(7);
+
+            // Validate token
+            if (!jwtTokenValidator.validateToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid token"));
+            }
+
+            // Get user ID and email from token
+            String userId = jwtTokenValidator.getUserIdFromToken(token);
+            String email = jwtTokenValidator.getEmailFromToken(token);
+
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Email not found in token"));
+            }
+
+            // Check all role tables to find user's role
+            String userRole = null;
+
+            if (donorRepository.findByEmail(email).isPresent()) {
+                userRole = "donor";
+            } else if (governmentRepository.findByEmail(email).isPresent()) {
+                userRole = "government";
+            } else if (ngoRepository.findByEmail(email).isPresent()) {
+                userRole = "ngo";
+            } else if (vendorRepository.findByEmail(email).isPresent()) {
+                userRole = "vendor";
+            } else if (auditorRepository.findByEmail(email).isPresent()) {
+                userRole = "auditor";
+            }
+
+            if (userRole != null) {
+                return ResponseEntity.ok(Map.of(
+                        "role", userRole,
+                        "userId", userId,
+                        "email", email));
+            } else {
+                return ResponseEntity.ok(Map.of(
+                        "role", "citizen",
+                        "userId", userId,
+                        "email", email,
+                        "message", "No role assigned yet"));
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get user role: " + e.getMessage()));
         }
     }
 
