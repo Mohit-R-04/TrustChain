@@ -34,15 +34,19 @@ public class Donation {
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
 
+    @Column(name = "status")
+    private String status;
+
     // Constructors
     public Donation() {
     }
 
-    public Donation(Scheme scheme, Double amount, String transactionRef, LocalDateTime timestamp) {
+    public Donation(Scheme scheme, Double amount, String transactionRef, LocalDateTime timestamp, String status) {
         this.scheme = scheme;
         this.amount = amount;
         this.transactionRef = transactionRef;
         this.timestamp = timestamp;
+        this.status = status;
     }
 
     // Getters and Setters
@@ -100,5 +104,13 @@ public class Donation {
 
     public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

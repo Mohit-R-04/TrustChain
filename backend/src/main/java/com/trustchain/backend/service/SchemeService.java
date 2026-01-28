@@ -16,26 +16,29 @@ public class SchemeService {
     private SchemeRepository schemeRepository;
 
     public List<Scheme> getAllSchemes() {
-        // TODO: Implement method
-        return null;
+        return schemeRepository.findAll();
     }
 
     public Optional<Scheme> getSchemeById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return schemeRepository.findById(id);
     }
 
     public Scheme createScheme(Scheme scheme) {
-        // TODO: Implement method
-        return null;
+        if (scheme.getCreatedAt() == null) {
+            scheme.setCreatedAt(java.time.LocalDateTime.now());
+        }
+        return schemeRepository.save(scheme);
     }
 
     public Scheme updateScheme(UUID id, Scheme scheme) {
-        // TODO: Implement method
+        if (schemeRepository.existsById(id)) {
+            scheme.setSchemeId(id);
+            return schemeRepository.save(scheme);
+        }
         return null;
     }
 
     public void deleteScheme(UUID id) {
-        // TODO: Implement method
+        schemeRepository.deleteById(id);
     }
 }

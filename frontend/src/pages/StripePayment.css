@@ -1,0 +1,190 @@
+.stripe-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f7f9fc;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.stripe-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
+    width: 100%;
+    max-width: 480px;
+}
+
+.stripe-header {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 20px;
+}
+
+.stripe-header h2 {
+    color: #32325d;
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.stripe-header p {
+    color: #6b7c93;
+    margin: 0;
+    font-size: 14px;
+}
+
+.order-summary {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    text-align: center;
+    color: #32325d;
+    border: 1px solid #e6ebf1;
+}
+
+.order-summary h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Payment Method Selector */
+.payment-method-selector {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    justify-content: center;
+}
+
+.method-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #e6ebf1;
+    background: white;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #6b7c93;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.method-btn:hover {
+    border-color: #cfd7df;
+    color: #32325d;
+}
+
+.method-btn.active {
+    border-color: #5469d4;
+    background: #f0f5ff;
+    color: #5469d4;
+    box-shadow: 0 0 0 1px #5469d4;
+}
+
+.stripe-form-group {
+    margin-bottom: 24px;
+}
+
+.stripe-form-group label {
+    display: block;
+    color: #6b7c93;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.stripe-form-group input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e6ebf1;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    box-sizing: border-box;
+    color: #32325d;
+    background-color: white;
+}
+
+.stripe-form-group input::placeholder {
+    color: #aab7c4;
+}
+
+.stripe-form-group input:focus {
+    box-shadow: 0 1px 3px 0 #cfd7df;
+    outline: none;
+    border-color: #5469d4;
+}
+
+.card-element-mock {
+    display: flex;
+    gap: 10px;
+}
+
+.card-number { flex: 2.5; }
+.card-expiry { flex: 1; }
+.card-cvc { flex: 1; }
+
+.stripe-pay-btn {
+    width: 100%;
+    padding: 14px;
+    background: #5469d4;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stripe-pay-btn:hover {
+    background: #4356b5;
+    transform: translateY(-1px);
+    box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+
+.stripe-pay-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stripe-pay-btn:disabled {
+    background: #aab7c4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.stripe-error {
+    color: #cd3d64;
+    background: #fff0f3;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    border-left: 4px solid #cd3d64;
+}
+
+.success-message {
+    text-align: center;
+    color: #24b47e;
+    padding: 40px 0;
+}
+
+.success-message h3 {
+    color: #32325d;
+    margin-top: 10px;
+}

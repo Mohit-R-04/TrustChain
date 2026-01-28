@@ -12,6 +12,7 @@ import NGODashboard from './pages/NGODashboard';
 import VendorDashboard from './pages/VendorDashboard';
 import VendorKycPage from './pages/VendorKycPage';
 import AuditorDashboard from './pages/AuditorDashboard';
+import StripePayment from './pages/StripePayment';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthCallback from './components/AuthCallback';
 
@@ -214,6 +215,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRole="donor">
                   <DonorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment"
+              element={
+                <ProtectedRoute allowedRole="donor">
+                  <StripePayment />
                 </ProtectedRoute>
               }
             />

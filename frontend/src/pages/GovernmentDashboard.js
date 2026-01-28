@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import DashboardHeader from '../components/DashboardHeader';
+import CreateSchemeForm from '../components/CreateSchemeForm';
 import './DashboardPage.css';
 
 const GovernmentDashboard = () => {
     const { user } = useUser();
+    const [showCreateForm, setShowCreateForm] = useState(false);
 
     return (
         <div className="dashboard-container">
@@ -40,12 +42,27 @@ const GovernmentDashboard = () => {
                 <div className="action-section">
                     <h2>Quick Actions</h2>
                     <div className="action-buttons">
-                        <button className="action-btn primary">Create New Scheme</button>
+                        <button 
+                            className="action-btn primary"
+                            onClick={() => setShowCreateForm(true)}
+                        >
+                            Create New Scheme
+                        </button>
                         <button className="action-btn secondary">Monitor Funds</button>
                         <button className="action-btn secondary">Generate Reports</button>
                     </div>
                 </div>
             </div>
+
+            {showCreateForm && (
+                <CreateSchemeForm 
+                    onClose={() => setShowCreateForm(false)}
+                    onSuccess={(data) => {
+                        console.log('Scheme created:', data);
+                        // Optional: Refresh stats or list
+                    }}
+                />
+            )}
         </div>
     );
 };

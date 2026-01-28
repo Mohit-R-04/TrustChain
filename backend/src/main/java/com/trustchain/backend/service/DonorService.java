@@ -16,26 +16,26 @@ public class DonorService {
     private DonorRepository donorRepository;
 
     public List<Donor> getAllDonors() {
-        // TODO: Implement method
-        return null;
+        return donorRepository.findAll();
     }
 
     public Optional<Donor> getDonorById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return donorRepository.findById(id);
     }
 
     public Donor createDonor(Donor donor) {
-        // TODO: Implement method
-        return null;
+        return donorRepository.save(donor);
     }
 
     public Donor updateDonor(UUID id, Donor donor) {
-        // TODO: Implement method
+        if (donorRepository.existsById(id)) {
+            donor.setDonorId(id);
+            return donorRepository.save(donor);
+        }
         return null;
     }
 
     public void deleteDonor(UUID id) {
-        // TODO: Implement method
+        donorRepository.deleteById(id);
     }
 }
