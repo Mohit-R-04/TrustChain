@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -18,31 +19,41 @@ public class NgoVendorController {
 
     @GetMapping
     public ResponseEntity<List<NgoVendor>> getAllNgoVendors() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(ngoVendorService.getAllNgoVendors());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<NgoVendor>> getNgoVendorsByVendorUserId(@PathVariable String userId) {
+        return ResponseEntity.ok(ngoVendorService.getNgoVendorsByVendorUserId(userId));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<NgoVendor> getNgoVendorById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return ngoVendorService.getNgoVendorById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<NgoVendor> createNgoVendor(@RequestBody NgoVendor ngoVendor) {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(ngoVendorService.createNgoVendor(ngoVendor));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<NgoVendor> updateNgoVendor(@PathVariable UUID id, @RequestBody NgoVendor ngoVendor) {
-        // TODO: Implement endpoint
-        return null;
+        NgoVendor updatedNgoVendor = ngoVendorService.updateNgoVendor(id, ngoVendor);
+        return updatedNgoVendor != null ? ResponseEntity.ok(updatedNgoVendor) : ResponseEntity.notFound().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<NgoVendor> updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> statusUpdate) {
+        String status = statusUpdate.get("status");
+        return ResponseEntity.ok(ngoVendorService.updateStatus(id, status));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteNgoVendor(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        ngoVendorService.deleteNgoVendor(id);
+        return ResponseEntity.noContent().build();
     }
 }

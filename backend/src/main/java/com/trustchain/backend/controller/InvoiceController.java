@@ -18,31 +18,39 @@ public class InvoiceController {
 
     @GetMapping
     public ResponseEntity<List<Invoice>> getAllInvoices() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(invoiceService.getAllInvoices());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Invoice>> getInvoicesByVendorUserId(@PathVariable String userId) {
+        return ResponseEntity.ok(invoiceService.getInvoicesByVendorUserId(userId));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Invoice> getInvoiceById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return invoiceService.getInvoiceById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<Invoice> createInvoice(@RequestBody Invoice invoice) {
-        // TODO: Implement endpoint
-        return null;
+        // Ensure created_at is set
+        if (invoice.getCreatedAt() == null) {
+            invoice.setCreatedAt(java.time.LocalDateTime.now());
+        }
+        return ResponseEntity.ok(invoiceService.createInvoice(invoice));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Invoice> updateInvoice(@PathVariable UUID id, @RequestBody Invoice invoice) {
-        // TODO: Implement endpoint
-        return null;
+        Invoice updatedInvoice = invoiceService.updateInvoice(id, invoice);
+        return updatedInvoice != null ? ResponseEntity.ok(updatedInvoice) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteInvoice(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        invoiceService.deleteInvoice(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -16,26 +16,30 @@ public class TransactionService {
     private TransactionRepository transactionRepository;
 
     public List<Transaction> getAllTransactions() {
-        // TODO: Implement method
-        return null;
+        return transactionRepository.findAll();
+    }
+
+    public List<Transaction> getTransactionsByVendorUserId(String userId) {
+        return transactionRepository.findByVendor_UserId(userId);
     }
 
     public Optional<Transaction> getTransactionById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return transactionRepository.findById(id);
     }
 
     public Transaction createTransaction(Transaction transaction) {
-        // TODO: Implement method
-        return null;
+        return transactionRepository.save(transaction);
     }
 
     public Transaction updateTransaction(UUID id, Transaction transaction) {
-        // TODO: Implement method
+        if (transactionRepository.existsById(id)) {
+            transaction.setTransactionId(id);
+            return transactionRepository.save(transaction);
+        }
         return null;
     }
 
     public void deleteTransaction(UUID id) {
-        // TODO: Implement method
+        transactionRepository.deleteById(id);
     }
 }

@@ -16,26 +16,30 @@ public class VendorService {
     private VendorRepository vendorRepository;
 
     public List<Vendor> getAllVendors() {
-        // TODO: Implement method
-        return null;
+        return vendorRepository.findAll();
     }
 
     public Optional<Vendor> getVendorById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return vendorRepository.findById(id);
+    }
+
+    public Optional<Vendor> getVendorByUserId(String userId) {
+        return vendorRepository.findByUserId(userId);
     }
 
     public Vendor createVendor(Vendor vendor) {
-        // TODO: Implement method
-        return null;
+        return vendorRepository.save(vendor);
     }
 
     public Vendor updateVendor(UUID id, Vendor vendor) {
-        // TODO: Implement method
+        if (vendorRepository.existsById(id)) {
+            vendor.setVendorId(id);
+            return vendorRepository.save(vendor);
+        }
         return null;
     }
 
     public void deleteVendor(UUID id) {
-        // TODO: Implement method
+        vendorRepository.deleteById(id);
     }
 }

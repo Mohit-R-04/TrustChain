@@ -11,6 +11,7 @@ import GovernmentDashboard from './pages/GovernmentDashboard';
 import NGODashboard from './pages/NGODashboard';
 import VendorDashboard from './pages/VendorDashboard';
 import VendorKycPage from './pages/VendorKycPage';
+import NgoKycPage from './pages/NgoKycPage';
 import AuditorDashboard from './pages/AuditorDashboard';
 import StripePayment from './pages/StripePayment';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -259,6 +260,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRole="vendor">
                   <VendorKycPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ngo-kyc"
+              element={
+                <ProtectedRoute allowedRole="ngo">
+                  <NgoKycPage />
                 </ProtectedRoute>
               }
             />

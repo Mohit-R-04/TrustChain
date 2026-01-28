@@ -68,31 +68,37 @@ public class VendorController {
     // CRUD Endpoints
     @GetMapping
     public ResponseEntity<List<Vendor>> getAllVendors() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(vendorService.getAllVendors());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Vendor> getVendorByUserId(@PathVariable String userId) {
+        return vendorService.getVendorByUserId(userId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Vendor> getVendorById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return vendorService.getVendorById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<Vendor> createVendor(@RequestBody Vendor vendor) {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(vendorService.createVendor(vendor));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Vendor> updateVendor(@PathVariable UUID id, @RequestBody Vendor vendor) {
-        // TODO: Implement endpoint
-        return null;
+        Vendor updatedVendor = vendorService.updateVendor(id, vendor);
+        return updatedVendor != null ? ResponseEntity.ok(updatedVendor) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteVendor(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        vendorService.deleteVendor(id);
+        return ResponseEntity.noContent().build();
     }
 }

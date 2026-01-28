@@ -18,31 +18,35 @@ public class TransactionController {
 
     @GetMapping
     public ResponseEntity<List<Transaction>> getAllTransactions() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(transactionService.getAllTransactions());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Transaction>> getTransactionsByVendorUserId(@PathVariable String userId) {
+        return ResponseEntity.ok(transactionService.getTransactionsByVendorUserId(userId));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Transaction> getTransactionById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return transactionService.getTransactionById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<Transaction> createTransaction(@RequestBody Transaction transaction) {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(transactionService.createTransaction(transaction));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Transaction> updateTransaction(@PathVariable UUID id, @RequestBody Transaction transaction) {
-        // TODO: Implement endpoint
-        return null;
+        Transaction updatedTransaction = transactionService.updateTransaction(id, transaction);
+        return updatedTransaction != null ? ResponseEntity.ok(updatedTransaction) : ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTransaction(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        transactionService.deleteTransaction(id);
+        return ResponseEntity.noContent().build();
     }
 }

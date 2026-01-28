@@ -68,6 +68,11 @@ public class AuditorController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Auditor> getAuditorByUserId(@PathVariable String userId) {
+        return ResponseEntity.ok(auditorService.getAuditorByUserId(userId));
+    }
+
     // CRUD Endpoints
     @GetMapping
     public ResponseEntity<List<Auditor>> getAllAuditors() {

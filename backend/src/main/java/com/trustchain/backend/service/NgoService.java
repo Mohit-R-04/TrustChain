@@ -16,26 +16,31 @@ public class NgoService {
     private NgoRepository ngoRepository;
 
     public List<Ngo> getAllNgos() {
-        // TODO: Implement method
-        return null;
+        return ngoRepository.findAll();
     }
 
     public Optional<Ngo> getNgoById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return ngoRepository.findById(id);
+    }
+    
+    public Optional<Ngo> getNgoByUserId(String userId) {
+        return ngoRepository.findByUserId(userId);
     }
 
     public Ngo createNgo(Ngo ngo) {
-        // TODO: Implement method
-        return null;
+        return ngoRepository.save(ngo);
     }
 
     public Ngo updateNgo(UUID id, Ngo ngo) {
-        // TODO: Implement method
-        return null;
+        return ngoRepository.findById(id).map(existingNgo -> {
+            existingNgo.setName(ngo.getName());
+            existingNgo.setEmail(ngo.getEmail());
+            // Update other fields
+            return ngoRepository.save(existingNgo);
+        }).orElse(null);
     }
 
     public void deleteNgo(UUID id) {
-        // TODO: Implement method
+        ngoRepository.deleteById(id);
     }
 }

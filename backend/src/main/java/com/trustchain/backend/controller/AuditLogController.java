@@ -18,31 +18,33 @@ public class AuditLogController {
 
     @GetMapping
     public ResponseEntity<List<AuditLog>> getAllAuditLogs() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(auditLogService.getAllAuditLogs());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<AuditLog> getAuditLogById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return auditLogService.getAuditLogById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<AuditLog> createAuditLog(@RequestBody AuditLog auditLog) {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(auditLogService.createAuditLog(auditLog));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<AuditLog> updateAuditLog(@PathVariable UUID id, @RequestBody AuditLog auditLog) {
-        // TODO: Implement endpoint
-        return null;
+        AuditLog updated = auditLogService.updateAuditLog(id, auditLog);
+        if (updated != null) {
+            return ResponseEntity.ok(updated);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAuditLog(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        auditLogService.deleteAuditLog(id);
+        return ResponseEntity.ok().build();
     }
 }
