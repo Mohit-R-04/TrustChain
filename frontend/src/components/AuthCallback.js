@@ -14,7 +14,6 @@ const AuthCallback = () => {
 
     useEffect(() => {
         const handleRedirect = async () => {
-            // Prevent double execution
             if (hasRedirected.current) {
                 console.log('Already redirected, skipping...');
                 return;
