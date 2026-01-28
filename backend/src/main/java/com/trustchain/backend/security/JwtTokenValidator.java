@@ -52,7 +52,7 @@ public class JwtTokenValidator {
         try {
             JsonNode payload = decodePayload(token);
             if (payload == null)
-                return "citizen";
+                return "donor"; // Default to donor for testing
 
             // Check public_metadata.role
             if (payload.has("public_metadata")) {
@@ -67,9 +67,9 @@ public class JwtTokenValidator {
                 return payload.get("role").asText();
             }
 
-            return "citizen";
+            return "donor"; // Default to donor if no role specified
         } catch (Exception e) {
-            return "citizen";
+            return "donor"; // Default to donor on error
         }
     }
 

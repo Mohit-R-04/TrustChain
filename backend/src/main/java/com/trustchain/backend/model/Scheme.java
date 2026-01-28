@@ -28,6 +28,24 @@ public class Scheme {
     @Column(name = "is_finished")
     private Boolean isFinished;
 
+    @Column(name = "category")
+    private String category;
+
+    @Column(name = "region")
+    private String region;
+
+    @Column(name = "expected_beneficiaries")
+    private Integer expectedBeneficiaries;
+
+    @Column(name = "milestone_count")
+    private Integer milestoneCount;
+
+    @Column(name = "description", length = 1000)
+    private String description;
+
+    @Column(name = "created_at")
+    private java.time.LocalDateTime createdAt;
+
     @ManyToOne
     @JoinColumn(name = "govt_id", referencedColumnName = "govt_id")
     private Government government;
@@ -42,6 +60,7 @@ public class Scheme {
         this.startDate = startDate;
         this.endDate = endDate;
         this.isFinished = isFinished;
+        this.createdAt = java.time.LocalDateTime.now();
     }
 
     // Getters and Setters
@@ -91,6 +110,54 @@ public class Scheme {
 
     public void setIsFinished(Boolean isFinished) {
         this.isFinished = isFinished;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public Integer getExpectedBeneficiaries() {
+        return expectedBeneficiaries;
+    }
+
+    public void setExpectedBeneficiaries(Integer expectedBeneficiaries) {
+        this.expectedBeneficiaries = expectedBeneficiaries;
+    }
+
+    public Integer getMilestoneCount() {
+        return milestoneCount;
+    }
+
+    public void setMilestoneCount(Integer milestoneCount) {
+        this.milestoneCount = milestoneCount;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Government getGovernment() {

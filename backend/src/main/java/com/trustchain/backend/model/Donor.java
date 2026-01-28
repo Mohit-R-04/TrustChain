@@ -18,6 +18,12 @@ public class Donor {
     @Column(name = "password")
     private String password;
 
+    @Column(name = "auth_id")
+    private String authId;
+
+    @Column(name = "email")
+    private String email;
+
     // Constructors
     public Donor() {
     }
@@ -50,5 +56,21 @@ public class Donor {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getAuthId() {
+        return authId;
+    }
+
+    public void setAuthId(String authId) {
+        this.authId = authId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 }
