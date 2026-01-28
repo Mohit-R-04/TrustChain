@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useClerk } from '@clerk/clerk-react';
 
 const AuthCallback = () => {
     const navigate = useNavigate();
     const { isLoaded, isSignedIn, user } = useUser();
+    const { signOut } = useClerk();
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -139,7 +140,10 @@ const AuthCallback = () => {
                         </button>
 
                         <button
-                            onClick={() => navigate('/')}
+                            onClick={async () => {
+                                await signOut();
+                                navigate('/');
+                            }}
                             style={{
                                 padding: '12px 24px',
                                 background: 'rgba(255, 255, 255, 0.1)',
