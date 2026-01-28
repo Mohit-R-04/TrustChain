@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import DashboardHeader from '../components/DashboardHeader';
+import NewSchemeForm from '../components/NewSchemeForm';
+import GovernmentDonationForm from '../components/GovernmentDonationForm';
 import './DashboardPage.css';
 
 const GovernmentDashboard = () => {
     const { user } = useUser();
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [showDonationForm, setShowDonationForm] = useState(false);
+
+    const handleCreateScheme = (schemeData) => {
+        console.log('New Scheme Created:', schemeData);
+        setShowCreateForm(false);
+    };
 
     return (
         <div className="dashboard-container">
@@ -40,12 +49,37 @@ const GovernmentDashboard = () => {
                 <div className="action-section">
                     <h2>Quick Actions</h2>
                     <div className="action-buttons">
-                        <button className="action-btn primary">Create New Scheme</button>
+                        <button
+                            className="action-btn primary"
+                            onClick={() => setShowCreateForm(true)}
+                        >
+                            Create New Scheme
+                        </button>
+                        <button
+                            className="action-btn secondary"
+                            onClick={() => setShowDonationForm(true)}
+                        >
+                            Donate to Scheme
+                        </button>
                         <button className="action-btn secondary">Monitor Funds</button>
-                        <button className="action-btn secondary">Generate Reports</button>
                     </div>
                 </div>
+
+                {/* Removed inline donation form */}
             </div>
+
+            {showCreateForm && (
+                <NewSchemeForm
+                    onClose={() => setShowCreateForm(false)}
+                    onSubmit={handleCreateScheme}
+                />
+            )}
+
+            {showDonationForm && (
+                <GovernmentDonationForm
+                    onClose={() => setShowDonationForm(false)}
+                />
+            )}
         </div>
     );
 };

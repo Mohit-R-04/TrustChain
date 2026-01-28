@@ -20,10 +20,24 @@ public class Scheme {
     private Double budget;
 
     @Column(name = "start_date")
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate startDate;
 
     @Column(name = "end_date")
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate endDate;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "category")
+    private String category;
+
+    @Column(name = "region")
+    private String region;
+
+    @Column(name = "donated_amount")
+    private Double donatedAmount = 0.0;
 
     @Column(name = "is_finished")
     private Boolean isFinished;
@@ -99,5 +113,37 @@ public class Scheme {
 
     public void setGovernment(Government government) {
         this.government = government;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public Double getDonatedAmount() {
+        return donatedAmount;
+    }
+
+    public void setDonatedAmount(Double donatedAmount) {
+        this.donatedAmount = donatedAmount;
     }
 }

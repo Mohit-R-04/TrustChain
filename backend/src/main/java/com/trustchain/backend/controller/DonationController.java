@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/donation")
+@CrossOrigin(origins = "http://localhost:3000")
 public class DonationController {
 
     @Autowired
@@ -18,31 +19,33 @@ public class DonationController {
 
     @GetMapping
     public ResponseEntity<List<Donation>> getAllDonations() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(donationService.getAllDonations());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Donation> getDonationById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return donationService.getDonationById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<Donation> createDonation(@RequestBody Donation donation) {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(donationService.createDonation(donation));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Donation> updateDonation(@PathVariable UUID id, @RequestBody Donation donation) {
-        // TODO: Implement endpoint
-        return null;
+        try {
+            return ResponseEntity.ok(donationService.updateDonation(id, donation));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDonation(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        donationService.deleteDonation(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -16,26 +16,33 @@ public class SchemeService {
     private SchemeRepository schemeRepository;
 
     public List<Scheme> getAllSchemes() {
-        // TODO: Implement method
-        return null;
+        return schemeRepository.findAll();
     }
 
     public Optional<Scheme> getSchemeById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return schemeRepository.findById(id);
     }
 
     public Scheme createScheme(Scheme scheme) {
-        // TODO: Implement method
-        return null;
+        return schemeRepository.save(scheme);
     }
 
-    public Scheme updateScheme(UUID id, Scheme scheme) {
-        // TODO: Implement method
-        return null;
+    public Scheme updateScheme(UUID id, Scheme schemeDetails) {
+        return schemeRepository.findById(id).map(scheme -> {
+            scheme.setSchemeName(schemeDetails.getSchemeName());
+            scheme.setBudget(schemeDetails.getBudget());
+            scheme.setStartDate(schemeDetails.getStartDate());
+            scheme.setEndDate(schemeDetails.getEndDate());
+            scheme.setIsFinished(schemeDetails.getIsFinished());
+            scheme.setDescription(schemeDetails.getDescription());
+            scheme.setCategory(schemeDetails.getCategory());
+            scheme.setRegion(schemeDetails.getRegion());
+            scheme.setDonatedAmount(schemeDetails.getDonatedAmount());
+            return schemeRepository.save(scheme);
+        }).orElseThrow(() -> new RuntimeException("Scheme not found with id " + id));
     }
 
     public void deleteScheme(UUID id) {
-        // TODO: Implement method
+        schemeRepository.deleteById(id);
     }
 }
