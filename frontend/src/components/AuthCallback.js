@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useClerk } from '@clerk/clerk-react';
 
 const AuthCallback = () => {
     const navigate = useNavigate();
     const { isLoaded, isSignedIn, user } = useUser();
+    const { signOut } = useClerk();
     const [error, setError] = useState(null);
 
     useEffect(() => {
