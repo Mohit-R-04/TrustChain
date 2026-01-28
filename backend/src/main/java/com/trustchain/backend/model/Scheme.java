@@ -48,6 +48,7 @@ public class Scheme {
 
     @ManyToOne
     @JoinColumn(name = "govt_id", referencedColumnName = "govt_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"schemes", "hibernateLazyInitializer", "handler"})
     private Government government;
 
     // Constructors

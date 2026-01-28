@@ -13,6 +13,7 @@ const NGODashboard = () => {
     
     const [ngoDetails, setNgoDetails] = useState(null);
     const [schemes, setSchemes] = useState([]);
+    const [allSchemes, setAllSchemes] = useState([]);
     
     const [showCreateProject, setShowCreateProject] = useState(false);
     const [showUploadDocs, setShowUploadDocs] = useState(false);
@@ -21,6 +22,9 @@ const NGODashboard = () => {
     const [projectForm, setProjectForm] = useState({
         schemeId: ''
     });
+
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [schemesError, setSchemesError] = useState(null);
 
     const [stats, setStats] = useState({
         activeProjects: 0,
@@ -33,6 +37,15 @@ const NGODashboard = () => {
             fetchDashboardData();
         }
     }, [user]);
+
+    // Client-side filtering when category changes
+    useEffect(() => {
+        if (selectedCategory === 'All') {
+            setSchemes(allSchemes);
+        } else {
+            setSchemes(allSchemes.filter(s => s.category === selectedCategory));
+        }
+    }, [selectedCategory, allSchemes]);
 
     const fetchDashboardData = async () => {
         try {
@@ -50,7 +63,12 @@ const NGODashboard = () => {
             const schemesRes = await fetch(`${API_URL}/api/scheme`, { headers });
             if (schemesRes.ok) {
                 const data = await schemesRes.json();
+                console.log("Fetched schemes:", data); // Debug log
                 setSchemes(data);
+                setAllSchemes(data);
+            } else {
+                console.error("Failed to fetch schemes:", schemesRes.status);
+                setSchemesError(`Failed to fetch schemes (Status: ${schemesRes.status})`);
             }
 
             // Mock Stats (can be real if endpoints exist)
@@ -141,9 +159,12 @@ const NGODashboard = () => {
                         </button>
                         <button 
                             className="action-btn primary"
-                            onClick={() => setShowCreateProject(true)}
+                            onClick={() => {
+                                fetchDashboardData();
+                                setShowCreateProject(true);
+                            }}
                         >
-                            Create Project
+                            New Project
                         </button>
                         <button 
                             className="action-btn secondary"
@@ -164,28 +185,89 @@ const NGODashboard = () => {
             {/* Create Project Modal */}
             {showCreateProject && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
+                    <div className="modal-content" style={{ maxWidth: '800px' }}>
                         <div className="modal-header">
                             <h3>Create New Project</h3>
                             <button className="close-btn" onClick={() => setShowCreateProject(false)}>×</button>
                         </div>
                         <form onSubmit={handleCreateProject}>
                             <div className="form-group">
-                                <label>Select Scheme</label>
+                                <label>Filter by Category</label>
                                 <select 
-                                    value={projectForm.schemeId}
-                                    onChange={(e) => setProjectForm({...projectForm, schemeId: e.target.value})}
-                                    required
+                                    value={selectedCategory} 
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    style={{ marginBottom: '15px' }}
                                 >
-                                    <option value="">Select a Scheme</option>
-                                    {schemes.map(scheme => (
-                                        <option key={scheme.schemeId} value={scheme.schemeId}>
-                                            {scheme.schemeName} (₹{scheme.budget})
-                                        </option>
+                                    {['All', ...new Set(allSchemes.map(s => s.category).filter(Boolean))].map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
                                     ))}
                                 </select>
                             </div>
-                            <button type="submit" className="submit-btn">Create Project</button>
+
+                            <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
+                                        <tr>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Select</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Scheme Name</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Category</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Region</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Budget</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {schemes.map(scheme => (
+                                            <tr 
+                                                key={scheme.schemeId} 
+                                                onClick={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
+                                                style={{ 
+                                                    cursor: 'pointer', 
+                                                    backgroundColor: projectForm.schemeId === scheme.schemeId ? '#eff6ff' : 'transparent',
+                                                    borderBottom: '1px solid #f1f5f9'
+                                                }}
+                                            >
+                                                <td style={{ padding: '12px' }}>
+                                                    <input 
+                                                        type="radio" 
+                                                        name="selectedScheme" 
+                                                        checked={projectForm.schemeId === scheme.schemeId}
+                                                        onChange={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
+                                                    />
+                                                </td>
+                                                <td style={{ padding: '12px' }}>{scheme.schemeName}</td>
+                                                <td style={{ padding: '12px' }}>{scheme.category || '-'}</td>
+                                                <td style={{ padding: '12px' }}>{scheme.region || '-'}</td>
+                                                <td style={{ padding: '12px' }}>₹{scheme.budget?.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                        {schemes.length === 0 && (
+                                            <tr>
+                                                <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                                                    {schemesError ? <span style={{color: 'red'}}>{schemesError}</span> : "No schemes available."}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                <button 
+                                    type="button" 
+                                    className="action-btn secondary" 
+                                    onClick={() => setShowCreateProject(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="submit-btn" 
+                                    disabled={!projectForm.schemeId}
+                                    style={{ width: 'auto', marginTop: 0 }}
+                                >
+                                    Accept Project
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>

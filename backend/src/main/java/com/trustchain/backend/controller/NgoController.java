@@ -1,6 +1,7 @@
 package com.trustchain.backend.controller;
 
 import com.trustchain.backend.annotation.RequireRole;
+
 import com.trustchain.backend.model.Ngo;
 import com.trustchain.backend.model.UserRole;
 import com.trustchain.backend.service.NgoService;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/ngo")
+@CrossOrigin(origins = "*")
 public class NgoController {
 
     @Autowired

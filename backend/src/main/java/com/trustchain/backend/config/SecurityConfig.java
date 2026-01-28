@@ -52,6 +52,12 @@ public class SecurityConfig {
 
                                                 // Citizen endpoints - accessible to all authenticated users
                                                 .requestMatchers(HttpMethod.GET, "/api/citizen/**").permitAll()
+                                                
+                                                // Scheme endpoints - Publicly readable
+                                                .requestMatchers(HttpMethod.GET, "/api/scheme/**").permitAll()
+
+                                                // Allow NGO user details fetch for any authenticated user (fixes 403 on dashboard load)
+                                                .requestMatchers("/api/ngo/user/**").authenticated()
 
                                                 // Role-specific endpoints
                                                 .requestMatchers("/api/donor/**").hasRole("DONOR")
