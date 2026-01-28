@@ -139,7 +139,10 @@ const AuthCallback = () => {
                         </button>
 
                         <button
-                            onClick={() => navigate('/')}
+                            onClick={async () => {
+                                await signOut();
+                                navigate('/');
+                            }}
                             style={{
                                 padding: '12px 24px',
                                 background: 'rgba(255, 255, 255, 0.1)',
