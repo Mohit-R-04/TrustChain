@@ -19,6 +19,11 @@ const CitizenPage = () => {
     const [verificationStatus, setVerificationStatus] = React.useState('');
     const [timer, setTimer] = React.useState(0);
 
+    const [needTitle, setNeedTitle] = React.useState('');
+    const [needCategory, setNeedCategory] = React.useState('');
+    const [needLocation, setNeedLocation] = React.useState('');
+    const [needDescription, setNeedDescription] = React.useState('');
+
     const handleSendOtp = async () => {
         if (!email) {
             setVerificationStatus('Please enter an email address.');
@@ -531,9 +536,40 @@ const CitizenPage = () => {
                         ) : (
                         <form
                             className="modal-form"
-                            onSubmit={(e) => {
+                            onSubmit={async (e) => {
                                 e.preventDefault();
-                                setIsPostModalOpen(false);
+
+                                if (!needTitle.trim() || !needCategory || !needLocation.trim() || !needDescription.trim()) {
+                                    setVerificationStatus('Please fill all fields before submitting.');
+                                    return;
+                                }
+
+                                try {
+                                    const response = await fetch('http://localhost:8080/api/community-needs', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            title: needTitle.trim(),
+                                            category: needCategory,
+                                            location: needLocation.trim(),
+                                            description: needDescription.trim(),
+                                            email
+                                        })
+                                    });
+
+                                    if (response.ok) {
+                                        setNeedTitle('');
+                                        setNeedCategory('');
+                                        setNeedLocation('');
+                                        setNeedDescription('');
+                                        setIsPostModalOpen(false);
+                                    } else {
+                                        setVerificationStatus('Failed to submit need. Please try again.');
+                                    }
+                                } catch (error) {
+                                    console.error('Error submitting community need:', error);
+                                    setVerificationStatus('Error submitting need. Ensure backend is running.');
+                                }
                             }}
                         >
                             <div className="form-group">
@@ -542,11 +578,17 @@ const CitizenPage = () => {
                                     type="text"
                                     placeholder="e.g., Mobile health clinic for regular checkups"
                                     className="form-input"
+                                    value={needTitle}
+                                    onChange={(e) => setNeedTitle(e.target.value)}
                                 />
                             </div>
                             <div className="form-group">
                                 <label>Category</label>
-                                <select className="form-select">
+                                <select
+                                    className="form-select"
+                                    value={needCategory}
+                                    onChange={(e) => setNeedCategory(e.target.value)}
+                                >
                                     <option value="">Select category</option>
                                     <option value="Healthcare">Healthcare</option>
                                     <option value="Education">Education</option>
@@ -561,6 +603,8 @@ const CitizenPage = () => {
                                     type="text"
                                     placeholder="Village/Town, District, State"
                                     className="form-input"
+                                    value={needLocation}
+                                    onChange={(e) => setNeedLocation(e.target.value)}
                                 />
                             </div>
                             <div className="form-group">
@@ -569,6 +613,8 @@ const CitizenPage = () => {
                                     placeholder="Explain the problem and how many people would benefit..."
                                     rows="4"
                                     className="form-textarea"
+                                    value={needDescription}
+                                    onChange={(e) => setNeedDescription(e.target.value)}
                                 ></textarea>
                             </div>
                             <div className="modal-actions">
