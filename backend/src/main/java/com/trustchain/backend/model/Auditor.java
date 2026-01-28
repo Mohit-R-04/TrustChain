@@ -12,19 +12,17 @@ public class Auditor {
     @Column(name = "auditor_id")
     private UUID auditorId;
 
+    @Column(name = "user_id")
+    private String userId;
+
+    @Column(name = "email")
+    private String email;
+
     @Column(name = "name")
     private String name;
 
-    @Column(name = "password")
-    private String password;
-
     // Constructors
     public Auditor() {
-    }
-
-    public Auditor(String name, String password) {
-        this.name = name;
-        this.password = password;
     }
 
     // Getters and Setters
@@ -36,19 +34,27 @@ public class Auditor {
         this.auditorId = auditorId;
     }
 
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 }

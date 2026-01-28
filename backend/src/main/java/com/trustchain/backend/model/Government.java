@@ -14,11 +14,14 @@ public class Government {
     @Column(name = "govt_id")
     private UUID govtId;
 
+    @Column(name = "user_id")
+    private String userId;
+
+    @Column(name = "email")
+    private String email;
+
     @Column(name = "govt_name")
     private String govtName;
-
-    @Column(name = "password")
-    private String password;
 
     @OneToMany(mappedBy = "government", cascade = CascadeType.ALL)
     private List<Scheme> schemes = new ArrayList<>();
@@ -27,9 +30,8 @@ public class Government {
     public Government() {
     }
 
-    public Government(String govtName, String password) {
+    public Government(String govtName) {
         this.govtName = govtName;
-        this.password = password;
     }
 
     // Getters and Setters
@@ -41,20 +43,28 @@ public class Government {
         this.govtId = govtId;
     }
 
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getGovtName() {
         return govtName;
     }
 
     public void setGovtName(String govtName) {
         this.govtName = govtName;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public List<Scheme> getSchemes() {

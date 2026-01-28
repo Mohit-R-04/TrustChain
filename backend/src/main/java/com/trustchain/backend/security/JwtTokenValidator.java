@@ -76,7 +76,25 @@ public class JwtTokenValidator {
     public String getEmailFromToken(String token) {
         try {
             JsonNode payload = decodePayload(token);
-            return payload != null && payload.has("email") ? payload.get("email").asText() : null;
+            if (payload == null) {
+                return null;
+            }
+
+            if (payload.has("email")) {
+                return payload.get("email").asText();
+            }
+
+            if (payload.has("email_addresses") && payload.get("email_addresses").isArray()) {
+                JsonNode emailAddresses = payload.get("email_addresses");
+                if (emailAddresses.size() > 0) {
+                    JsonNode first = emailAddresses.get(0);
+                    if (first.has("email_address")) {
+                        return first.get("email_address").asText();
+                    }
+                }
+            }
+
+            return null;
         } catch (Exception e) {
             return null;
         }

@@ -2,7 +2,17 @@ package com.trustchain.backend.controller;
 
 import com.trustchain.backend.dto.RoleAssignmentRequest;
 import com.trustchain.backend.dto.RoleAssignmentResponse;
+import com.trustchain.backend.model.Auditor;
+import com.trustchain.backend.model.Donor;
+import com.trustchain.backend.model.Government;
+import com.trustchain.backend.model.Ngo;
 import com.trustchain.backend.model.UserRole;
+import com.trustchain.backend.model.Vendor;
+import com.trustchain.backend.repository.AuditorRepository;
+import com.trustchain.backend.repository.DonorRepository;
+import com.trustchain.backend.repository.GovernmentRepository;
+import com.trustchain.backend.repository.NgoRepository;
+import com.trustchain.backend.repository.VendorRepository;
 import com.trustchain.backend.security.JwtTokenValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,6 +29,21 @@ public class AuthController {
 
     @Autowired
     private JwtTokenValidator jwtTokenValidator;
+
+    @Autowired
+    private DonorRepository donorRepository;
+
+    @Autowired
+    private GovernmentRepository governmentRepository;
+
+    @Autowired
+    private NgoRepository ngoRepository;
+
+    @Autowired
+    private VendorRepository vendorRepository;
+
+    @Autowired
+    private AuditorRepository auditorRepository;
 
     /**
      * Assign role to user during first login
@@ -45,7 +70,7 @@ public class AuthController {
                         .body(Map.of("error", "Invalid token"));
             }
 
-            // Get user ID from token
+            // Get user ID and email from token
             String userId = jwtTokenValidator.getUserIdFromToken(token);
 
             // Check if user already has a role
@@ -68,11 +93,67 @@ public class AuthController {
             }
 
             // Verify role is valid
+            UserRole userRoleEnum;
             try {
-                UserRole.valueOf(requestedRole.toUpperCase());
+                userRoleEnum = UserRole.valueOf(requestedRole.toUpperCase());
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Invalid role: " + requestedRole));
+            }
+
+            String emailFromToken = jwtTokenValidator.getEmailFromToken(token);
+            String emailFromRequest = request.getEmail();
+            String email = (emailFromToken != null && !emailFromToken.isEmpty())
+                    ? emailFromToken
+                    : emailFromRequest;
+            String providedName = request.getName();
+            String effectiveName = (providedName != null && !providedName.trim().isEmpty())
+                    ? providedName.trim()
+                    : deriveNameFromEmail(email);
+
+            switch (userRoleEnum) {
+                case DONOR: {
+                    Donor donor = new Donor();
+                    donor.setUserId(userId);
+                    donor.setEmail(email);
+                    donor.setName(effectiveName);
+                    donorRepository.save(donor);
+                    break;
+                }
+                case GOVERNMENT: {
+                    Government government = new Government();
+                    government.setUserId(userId);
+                    government.setEmail(email);
+                    government.setGovtName(effectiveName);
+                    governmentRepository.save(government);
+                    break;
+                }
+                case NGO: {
+                    Ngo ngo = new Ngo();
+                    ngo.setUserId(userId);
+                    ngo.setEmail(email);
+                    ngo.setName(effectiveName);
+                    ngoRepository.save(ngo);
+                    break;
+                }
+                case VENDOR: {
+                    Vendor vendor = new Vendor();
+                    vendor.setUserId(userId);
+                    vendor.setEmail(email);
+                    vendor.setName(effectiveName);
+                    vendorRepository.save(vendor);
+                    break;
+                }
+                case AUDITOR: {
+                    Auditor auditor = new Auditor();
+                    auditor.setUserId(userId);
+                    auditor.setEmail(email);
+                    auditor.setName(effectiveName);
+                    auditorRepository.save(auditor);
+                    break;
+                }
+                default:
+                    break;
             }
 
             // In a real application, you would:
@@ -92,6 +173,17 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to assign role: " + e.getMessage()));
         }
+    }
+
+    private String deriveNameFromEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return "User";
+        }
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 0) {
+            return email;
+        }
+        return email.substring(0, atIndex);
     }
 
     /**

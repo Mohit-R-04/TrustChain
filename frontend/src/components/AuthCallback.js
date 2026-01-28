@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser, useClerk } from '@clerk/clerk-react';
+import { useUser, useClerk, useAuth } from '@clerk/clerk-react';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 const AuthCallback = () => {
     const navigate = useNavigate();
     const { isLoaded, isSignedIn, user } = useUser();
     const { signOut } = useClerk();
+    const { getToken } = useAuth();
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -17,13 +20,10 @@ const AuthCallback = () => {
                 return;
             }
 
-            // Get user's existing role
             let userRole = user.publicMetadata?.role || user.unsafeMetadata?.role;
             const selectedRole = sessionStorage.getItem('selectedRole');
 
-            // If user already has a role
             if (userRole && userRole !== 'citizen') {
-                // Check if they're trying to sign in as a different role
                 if (selectedRole && selectedRole !== userRole) {
                     setError({
                         existingRole: userRole,
@@ -33,14 +33,32 @@ const AuthCallback = () => {
                     return;
                 }
 
-                // Same role or no role selected, redirect to their dashboard
                 navigate(`/${userRole}-dashboard`, { replace: true });
                 return;
             }
 
-            // No role assigned yet, assign the selected role
             if (selectedRole) {
                 try {
+                    const token = await getToken();
+
+                    const response = await fetch(`${API_URL}/api/auth/assign-role`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            role: selectedRole,
+                            name: user.fullName || user.primaryEmailAddress?.emailAddress || undefined,
+                            email: user.primaryEmailAddress?.emailAddress
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json().catch(() => null);
+                        throw new Error(data?.error || 'Failed to assign role');
+                    }
+
                     await user.update({
                         unsafeMetadata: {
                             role: selectedRole,
@@ -51,18 +69,17 @@ const AuthCallback = () => {
                     userRole = selectedRole;
                     sessionStorage.removeItem('selectedRole');
                     navigate(`/${userRole}-dashboard`, { replace: true });
-                } catch (error) {
-                    console.error('Error assigning role:', error);
+                } catch (err) {
+                    console.error('Error assigning role:', err);
                     setError({ message: 'Failed to assign role. Please try again.' });
                 }
             } else {
-                // No role selected and no existing role
                 navigate('/', { replace: true });
             }
         };
 
         handleRedirect();
-    }, [isLoaded, isSignedIn, user, navigate]);
+    }, [isLoaded, isSignedIn, user, navigate, getToken]);
 
     if (error) {
         return (
@@ -105,10 +122,11 @@ const AuthCallback = () => {
                             Your account is already registered as a <strong style={{ color: '#4F46E5' }}>
                                 {error.existingRole.charAt(0).toUpperCase() + error.existingRole.slice(1)}</strong>.
                             <br /><br />
-                            You attempted to sign in as <strong style={{ color: '#ef4444' }}>
+                            You attempted to sign in or sign up as <strong style={{ color: '#ef4444' }}>
                                 {error.attemptedRole.charAt(0).toUpperCase() + error.attemptedRole.slice(1)}</strong>.
                             <br /><br />
-                            Please use a different email address to create a new account with a different role.
+                            Each email can have only one role. To use a different role,
+                            please sign up with a different email address.
                         </p>
                     )}
 

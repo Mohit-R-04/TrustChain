@@ -45,6 +45,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/public/**").permitAll()
                                                 .requestMatchers("/api/hello").permitAll()
                                                 .requestMatchers("/api/health").permitAll()
+                                                .requestMatchers("/api/otp/**").permitAll()
 
                                                 // Auth endpoints - require authentication but no specific role
                                                 .requestMatchers("/api/auth/**").authenticated()

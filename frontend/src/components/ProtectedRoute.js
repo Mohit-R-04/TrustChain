@@ -1,45 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 
 const ProtectedRoute = ({ children, allowedRole }) => {
     const { isLoaded, isSignedIn, user } = useUser();
-
-    useEffect(() => {
-        // If user just signed in and has no role, assign the selected role
-        const assignRoleIfNeeded = async () => {
-            if (isLoaded && isSignedIn && user) {
-                const userRole = user.publicMetadata?.role || user.unsafeMetadata?.role;
-
-                if (!userRole || userRole === 'citizen') {
-                    // Get selected role from sessionStorage
-                    const selectedRole = sessionStorage.getItem('selectedRole');
-
-                    if (selectedRole) {
-                        try {
-                            // Assign role to user
-                            await user.update({
-                                unsafeMetadata: {
-                                    role: selectedRole,
-                                    roleAssignedAt: new Date().toISOString()
-                                }
-                            });
-
-                            // Clear sessionStorage
-                            sessionStorage.removeItem('selectedRole');
-
-                            // Reload to get updated metadata
-                            window.location.reload();
-                        } catch (error) {
-                            console.error('Error assigning role:', error);
-                        }
-                    }
-                }
-            }
-        };
-
-        assignRoleIfNeeded();
-    }, [isLoaded, isSignedIn, user]);
 
     // Show loading while checking authentication
     if (!isLoaded) {

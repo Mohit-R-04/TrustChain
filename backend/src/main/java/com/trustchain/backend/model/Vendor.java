@@ -12,11 +12,14 @@ public class Vendor {
     @Column(name = "vendor_id")
     private UUID vendorId;
 
+    @Column(name = "user_id")
+    private String userId;
+
+    @Column(name = "email")
+    private String email;
+
     @Column(name = "name")
     private String name;
-
-    @Column(name = "password")
-    private String password;
 
     @Column(name = "gstin")
     private String gstin;
@@ -31,14 +34,6 @@ public class Vendor {
     public Vendor() {
     }
 
-    public Vendor(String name, String password, String gstin, String kycStatus, String walletAddress) {
-        this.name = name;
-        this.password = password;
-        this.gstin = gstin;
-        this.kycStatus = kycStatus;
-        this.walletAddress = walletAddress;
-    }
-
     // Getters and Setters
     public UUID getVendorId() {
         return vendorId;
@@ -48,20 +43,28 @@ public class Vendor {
         this.vendorId = vendorId;
     }
 
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public String getGstin() {
