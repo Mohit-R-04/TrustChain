@@ -70,11 +70,17 @@ const DonationForm = ({ onClose }) => {
                             required
                         >
                             <option value="">Choose a scheme</option>
-                            {schemes.map((s) => (
-                                <option key={s.schemeId} value={s.schemeId}>
-                                    {s.schemeName}
+                            {schemes.length === 0 ? (
+                                <option value="" disabled>
+                                    No schemes available
                                 </option>
-                            ))}
+                            ) : (
+                                schemes.map((s) => (
+                                    <option key={s.schemeId} value={s.schemeId}>
+                                        {s.schemeName}
+                                    </option>
+                                ))
+                            )}
                         </select>
                     </div>
 
@@ -90,7 +96,7 @@ const DonationForm = ({ onClose }) => {
                     <button 
                         type="submit" 
                         className="pay-btn"
-                        disabled={!selectedSchemeId}
+                        disabled={!selectedSchemeId || schemes.length === 0}
                     >
                         <span>💳</span> Pay with Stripe
                     </button>

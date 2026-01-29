@@ -55,6 +55,7 @@ public class DonorController {
             response.put("transactionRef", donation.getTransactionRef());
             response.put("amount", donation.getAmount());
             response.put("status", "completed");
+            response.put("schemeId", donation.getScheme() != null ? donation.getScheme().getSchemeId() : null);
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {

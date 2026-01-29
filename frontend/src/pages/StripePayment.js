@@ -177,21 +177,7 @@ const StripePayment = () => {
                     let txHashToStore = '';
 
                     if (blockchainDemoMode) {
-                        const demoRes = await fetch(
-                            `${API_URL}/api/blockchain/demo/deposit/${schemeId}?amountWei=${encodeURIComponent(onChainWei.toString())}&donorAddress=${encodeURIComponent(donorAddress)}`,
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`
-                                }
-                            }
-                        );
-                        const demoData = await demoRes.json().catch(() => ({}));
-                        if (!demoRes.ok) {
-                            throw new Error(demoData?.message || 'Demo deposit failed');
-                        }
-                        txHashToStore = demoData.txHash || '';
-                        setBlockchainTxHash(txHashToStore || null);
+                        txHashToStore = '';
                     } else {
                         await ensurePolygonAmoyNetwork();
                         const txResponse = await fetch(

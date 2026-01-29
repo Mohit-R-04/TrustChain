@@ -4,13 +4,18 @@ import com.trustchain.backend.dto.DonationRequest;
 import com.trustchain.backend.model.Donation;
 import com.trustchain.backend.model.Donor;
 import com.trustchain.backend.model.Scheme;
+import com.trustchain.backend.config.BlockchainProperties;
 import com.trustchain.backend.repository.DonationRepository;
 import com.trustchain.backend.repository.DonorRepository;
 import com.trustchain.backend.repository.SchemeRepository;
+import com.trustchain.backend.service.blockchain.BlockchainIdUtil;
+import com.trustchain.backend.service.blockchain.DemoEscrowLedgerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +38,12 @@ public class DonationService {
 
     @Autowired
     private PaymentService paymentService;
+
+    @Autowired(required = false)
+    private BlockchainProperties blockchainProperties;
+
+    @Autowired(required = false)
+    private DemoEscrowLedgerService demoLedger;
 
     public Map<String, Object> getDonorStats(String donorAuthId) {
         List<Donation> donations = donationRepository.findByDonor_UserId(donorAuthId);
@@ -99,8 +110,18 @@ public class DonationService {
         donation.setTimestamp(java.time.LocalDateTime.now());
         donation.setTransactionRef(paymentService.generateTransactionReference());
         donation.setStatus("COMPLETED");
+        Donation saved = donationRepository.save(donation);
 
-        return donationRepository.save(donation);
+        if (blockchainProperties != null && blockchainProperties.isEnabled() && blockchainProperties.isDemoMode() && demoLedger != null) {
+            BigDecimal inr = BigDecimal.valueOf(request.getAmount() != null ? request.getAmount() : 0d);
+            if (inr.signum() > 0) {
+                BigInteger amountWei = inr.multiply(new BigDecimal("100000000000")).toBigInteger();
+                BigInteger schemeId = BlockchainIdUtil.uuidToUint256(scheme.getSchemeId());
+                demoLedger.recordDeposit(scheme.getSchemeId(), schemeId, "0x0000000000000000000000000000000000000000", amountWei);
+            }
+        }
+
+        return saved;
     }
 
     public Donation createDonation(Donation donation) {
