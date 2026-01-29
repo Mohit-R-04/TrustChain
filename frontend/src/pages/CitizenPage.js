@@ -7,19 +7,25 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 const CitizenPage = () => {
     const navigate = useNavigate();
-    const { isSignedIn } = useUser();
+    const { isSignedIn, user } = useUser();
     const { signOut } = useClerk();
     const [selectedLocation, setSelectedLocation] = React.useState('All');
     const [searchQuery, setSearchQuery] = React.useState('');
     const [isPostModalOpen, setIsPostModalOpen] = React.useState(false);
     const [projects, setProjects] = React.useState([]);
     const [transparency, setTransparency] = React.useState(null);
+    const [needs, setNeeds] = React.useState([]);
+    const [needsLoading, setNeedsLoading] = React.useState(false);
+    const [needsError, setNeedsError] = React.useState('');
+    const [needsSearchQuery, setNeedsSearchQuery] = React.useState('');
+    const [needsCategory, setNeedsCategory] = React.useState('All');
 
     // New state for OTP
     const [email, setEmail] = React.useState('');
     const [otp, setOtp] = React.useState('');
     const [isOtpSent, setIsOtpSent] = React.useState(false);
     const [isOtpVerified, setIsOtpVerified] = React.useState(false);
+    const [otpVerificationToken, setOtpVerificationToken] = React.useState('');
     const [verificationStatus, setVerificationStatus] = React.useState('');
     const [timer, setTimer] = React.useState(0);
 
@@ -27,6 +33,66 @@ const CitizenPage = () => {
     const [needCategory, setNeedCategory] = React.useState('');
     const [needLocation, setNeedLocation] = React.useState('');
     const [needDescription, setNeedDescription] = React.useState('');
+
+    const voterEmail = React.useMemo(() => {
+        const fromClerk =
+            user?.primaryEmailAddress?.emailAddress ||
+            user?.emailAddresses?.[0]?.emailAddress;
+        if (fromClerk) return fromClerk;
+        const existing = window.localStorage.getItem('trustchain_guest_voter_email');
+        if (existing) return existing;
+        const id = (((window.crypto && typeof window.crypto.randomUUID === 'function') ? window.crypto.randomUUID() : null) || `${Date.now()}-${Math.random().toString(16).slice(2)}`).replace(/[^a-zA-Z0-9-]/g, '');
+        const next = `guest-${id}@trustchain.local`;
+        window.localStorage.setItem('trustchain_guest_voter_email', next);
+        return next;
+    }, [user]);
+
+    const fetchNeeds = async () => {
+        setNeedsLoading(true);
+        setNeedsError('');
+        try {
+            const res = await fetch(`${API_URL}/api/community-needs`);
+            if (!res.ok) {
+                setNeedsError('Failed to load community needs.');
+                return;
+            }
+            const data = await res.json();
+            setNeeds(Array.isArray(data) ? data : []);
+        } catch {
+            setNeedsError('Failed to load community needs.');
+        } finally {
+            setNeedsLoading(false);
+        }
+    };
+
+    const voteOnNeed = async (needId, value) => {
+        try {
+            const res = await fetch(`${API_URL}/api/community-needs/${needId}/vote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: voterEmail, value })
+            });
+            if (!res.ok) return;
+            const updated = await res.json();
+            setNeeds((prev) => prev.map((n) => (n.needId === updated.needId ? updated : n)));
+        } catch {
+        }
+    };
+
+    const formatPostedTime = (createdAt) => {
+        if (!createdAt) return '';
+        const d = new Date(createdAt);
+        if (Number.isNaN(d.getTime())) return '';
+        const diffMs = Date.now() - d.getTime();
+        const seconds = Math.max(0, Math.floor(diffMs / 1000));
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        if (days > 0) return `${days} day${days === 1 ? '' : 's'} ago`;
+        if (hours > 0) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+        if (minutes > 0) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+        return 'just now';
+    };
 
     const handleSendOtp = async () => {
         if (!email) {
@@ -52,6 +118,7 @@ const CitizenPage = () => {
                 const text = await response.text().catch(() => '');
                 setVerificationStatus(text || 'OTP sent to your email.');
                 setTimer(30); // Start 30 seconds timer
+                setOtpVerificationToken('');
             } else {
                 const text = await response.text().catch(() => '');
                 setVerificationStatus(text || 'Failed to send OTP. Please try again.');
@@ -74,11 +141,22 @@ const CitizenPage = () => {
                 body: JSON.stringify({ email, otp })
             });
             if (response.ok) {
+                const data = await response.json().catch(() => null);
+                if (data && data.verificationToken) {
+                    setOtpVerificationToken(String(data.verificationToken));
+                } else {
+                    setOtpVerificationToken('');
+                }
                 setIsOtpVerified(true);
                 setVerificationStatus('');
             } else {
-                const text = await response.text().catch(() => '');
-                setVerificationStatus(text || 'Invalid or expired OTP.');
+                const data = await response.json().catch(() => null);
+                if (data && data.message) {
+                    setVerificationStatus(String(data.message));
+                } else {
+                    const text = await response.text().catch(() => '');
+                    setVerificationStatus(text || 'Invalid or expired OTP.');
+                }
             }
         } catch (error) {
             console.error('Error verifying OTP:', error);
@@ -104,6 +182,7 @@ const CitizenPage = () => {
             setOtp('');
             setIsOtpSent(false);
             setIsOtpVerified(false);
+            setOtpVerificationToken('');
             setVerificationStatus('');
             setTimer(0);
         }
@@ -129,6 +208,7 @@ const CitizenPage = () => {
             }
         };
         load();
+        fetchNeeds();
     }, []);
 
     const locations = React.useMemo(() => ['All', ...new Set(projects.map(p => p.location).filter(Boolean))], [projects]);
@@ -139,6 +219,15 @@ const CitizenPage = () => {
             project.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
             project.category.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesLocation && matchesSearch;
+    });
+
+    const filteredNeeds = needs.filter((need) => {
+        const title = String(need.title || '').toLowerCase();
+        const location = String(need.location || '').toLowerCase();
+        const q = needsSearchQuery.toLowerCase();
+        const matchesSearch = title.includes(q) || location.includes(q);
+        const matchesCategory = needsCategory === 'All' || need.category === needsCategory;
+        return matchesSearch && matchesCategory;
     });
 
     const handleAuthAction = async () => {
@@ -346,6 +435,86 @@ const CitizenPage = () => {
                 </div>
             </div>
 
+            <div className="citizen-needs-section">
+                <div className="section-header">
+                    <h2 className="section-title">Community Needs</h2>
+                    <div className="needs-tools">
+                        <div className="needs-search">
+                            <span className="needs-search-icon">🔍</span>
+                            <input
+                                type="text"
+                                placeholder="Search needs, locations..."
+                                value={needsSearchQuery}
+                                onChange={(e) => setNeedsSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="needs-filters">
+                            {['All', 'Healthcare', 'Education', 'Water', 'Livelihood', 'Infrastructure'].map((cat) => (
+                                <button
+                                    key={cat}
+                                    className={`needs-chip ${needsCategory === cat ? 'active' : ''}`}
+                                    onClick={() => setNeedsCategory(cat)}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {needsLoading ? (
+                    <div className="needs-empty">Loading...</div>
+                ) : needsError ? (
+                    <div className="needs-empty">{needsError}</div>
+                ) : filteredNeeds.length === 0 ? (
+                    <div className="needs-empty">No community needs posted yet.</div>
+                ) : (
+                    <div className="needs-grid">
+                        {filteredNeeds.map((need) => {
+                            const statusRaw = String(need.status || '').toLowerCase();
+                            const statusLabel = need.implementedSchemeId ? 'Official Scheme' : (need.status || 'open');
+                            const postedTime = formatPostedTime(need.createdAt);
+
+                            return (
+                                <div key={need.needId} className="needs-card">
+                                    <div className="needs-card-header">
+                                        <span className={`needs-tag ${String(need.category || '').toLowerCase()}`}>{need.category}</span>
+                                        <span className="needs-time">{postedTime}</span>
+                                    </div>
+                                    <div className="needs-title">{need.title}</div>
+                                    <div className="needs-desc">{need.description}</div>
+                                    <div className="needs-meta">
+                                        <span>📍 {need.location}</span>
+                                    </div>
+                                    <div className="needs-footer">
+                                        <div className={`needs-status ${statusRaw.replace(/\s+/g, '-')}`}>
+                                            {statusLabel}
+                                        </div>
+                                        <div className="needs-votes">
+                                            <span>👍 {need.upvotes || 0}</span>
+                                            <span>👎 {need.downvotes || 0}</span>
+                                        </div>
+                                    </div>
+                                    <div className="needs-actions">
+                                        <button className="needs-btn primary" onClick={() => voteOnNeed(need.needId, 1)}>
+                                            Upvote
+                                        </button>
+                                        <button className="needs-btn" onClick={() => voteOnNeed(need.needId, -1)}>
+                                            Downvote
+                                        </button>
+                                        {need.implementedSchemeId && (
+                                            <button className="needs-btn" style={{ marginLeft: 'auto' }} onClick={() => navigate(`/projects/${need.implementedSchemeId}`)}>
+                                                View Project
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
             <div className="features-section">
                 <h2 className="section-title">How TrustChain Works</h2>
                 <div className="features-grid">
@@ -497,6 +666,11 @@ const CitizenPage = () => {
                                 }
 
                                 try {
+                                    if (!otpVerificationToken) {
+                                        setVerificationStatus('Please verify your email with OTP again.');
+                                        setIsOtpVerified(false);
+                                        return;
+                                    }
                                     const response = await fetch(`${API_URL}/api/community-needs`, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
@@ -505,7 +679,8 @@ const CitizenPage = () => {
                                             category: needCategory,
                                             location: needLocation.trim(),
                                             description: needDescription.trim(),
-                                            email
+                                            email,
+                                            otpVerificationToken
                                         })
                                     });
 
@@ -514,6 +689,7 @@ const CitizenPage = () => {
                                         setNeedCategory('');
                                         setNeedLocation('');
                                         setNeedDescription('');
+                                        fetchNeeds();
                                         setIsPostModalOpen(false);
                                     } else {
                                         setVerificationStatus('Failed to submit need. Please try again.');

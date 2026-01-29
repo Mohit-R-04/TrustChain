@@ -170,10 +170,6 @@ const ProjectDetailsPage = () => {
             setStatusMessage('OTP must be 6 digits.');
             return;
         }
-        if (timer === 0) {
-            setStatusMessage('OTP expired. Please resend OTP.');
-            return;
-        }
 
         setStatusMessage('Verifying OTP...');
         try {
@@ -186,8 +182,13 @@ const ProjectDetailsPage = () => {
                 setIsOtpVerified(true);
                 setStatusMessage('');
             } else {
-                const text = await response.text().catch(() => '');
-                setStatusMessage(text || 'Invalid or expired OTP.');
+                const data = await response.json().catch(() => null);
+                if (data && data.message) {
+                    setStatusMessage(String(data.message));
+                } else {
+                    const text = await response.text().catch(() => '');
+                    setStatusMessage(text || 'Invalid or expired OTP.');
+                }
             }
         } catch {
             setStatusMessage('Unable to reach server. Please ensure backend is running.');

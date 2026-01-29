@@ -74,7 +74,7 @@ const DonorDashboard = () => {
             <div className="dashboard-content">
                 <div className="dashboard-grid">
                     <div className="stat-card">
-                        <div className="stat-icon">💰</div>
+                        <div className="stat-icon" aria-hidden="true">INR</div>
                         <div className="stat-content">
                             <h3>Total Donations</h3>
                             <p className="stat-value">₹{stats.totalDonations.toLocaleString()}</p>
@@ -82,7 +82,7 @@ const DonorDashboard = () => {
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon">📊</div>
+                        <div className="stat-icon" aria-hidden="true">PRJ</div>
                         <div className="stat-content">
                             <h3>Active Projects</h3>
                             <p className="stat-value">{stats.activeProjects}</p>
@@ -90,7 +90,7 @@ const DonorDashboard = () => {
                     </div>
 
                     <div className="stat-card">
-                        <div className="stat-icon">✅</div>
+                        <div className="stat-icon" aria-hidden="true">VER</div>
                         <div className="stat-content">
                             <h3>Verified Transactions</h3>
                             <p className="stat-value">{stats.verifiedTransactions}</p>
@@ -122,7 +122,7 @@ const DonorDashboard = () => {
                     </div>
                 </div>
 
-                <BlockchainPanel />
+                <BlockchainPanel getToken={getToken} scope="donor" />
             </div>
 
             {/* Donation Modal */}

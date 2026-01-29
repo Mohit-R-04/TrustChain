@@ -18,6 +18,7 @@ const StripePayment = () => {
     const [blockchainDemoMode, setBlockchainDemoMode] = useState(false);
     const [blockchainTxHash, setBlockchainTxHash] = useState(null);
     const [blockchainStatusError, setBlockchainStatusError] = useState(null);
+    const [walletAddress, setWalletAddress] = useState('');
 
     // Form states
     const [cardDetails, setCardDetails] = useState({
@@ -93,12 +94,7 @@ const StripePayment = () => {
 
     const fetchBlockchainStatus = async () => {
         try {
-            const token = await getToken();
-            const response = await fetch(`${API_URL}/api/blockchain/status`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const response = await fetch(`${API_URL}/api/public/blockchain/status`);
             if (!response.ok) {
                 return;
             }
@@ -108,6 +104,21 @@ const StripePayment = () => {
         } catch (err) {
             setBlockchainStatusError(err?.message || 'Failed to load blockchain status');
         }
+    };
+
+    const connectWallet = async () => {
+        if (!window.ethereum) {
+            throw new Error('MetaMask is not available. Open http://localhost:3000 in Chrome/Brave with MetaMask installed (IDE preview browsers do not support extensions).');
+        }
+        await ensurePolygonAmoyNetwork();
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const addr = accounts?.[0] ? String(accounts[0]) : '';
+        setWalletAddress(addr);
+        try {
+            if (addr) window.localStorage.setItem('trustchain_wallet_address', addr);
+        } catch {
+        }
+        return addr;
     };
 
     if (!schemeId) {
@@ -168,8 +179,7 @@ const StripePayment = () => {
 
                     let donorAddress = '0x0000000000000000000000000000000000000000';
                     if (window.ethereum) {
-                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                        if (accounts?.[0]) donorAddress = accounts[0];
+                        donorAddress = (walletAddress || (await connectWallet())) || donorAddress;
                     } else if (!blockchainDemoMode) {
                         throw new Error('Blockchain is enabled, but MetaMask is not available. Open http://localhost:3000 in Chrome/Brave with MetaMask installed (IDE preview browsers do not support extensions).');
                     }
@@ -219,7 +229,7 @@ const StripePayment = () => {
                 }
                 setSuccess(true);
                 setTimeout(() => {
-                    navigate('/donor'); // Navigate back to donor dashboard
+                    navigate('/donor-dashboard');
                 }, 3000);
             } else {
                 setError(data.message || 'Payment failed');
@@ -354,6 +364,31 @@ const StripePayment = () => {
                 {blockchainEnabled && (
                     <div style={{ marginTop: '16px', color: '#e2e8f0', fontSize: '13px' }}>
                         Blockchain deposit will be requested via MetaMask after payment.
+                        {!blockchainDemoMode && (
+                            <div style={{ marginTop: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <button
+                                    type="button"
+                                    className="stripe-pay-btn"
+                                    style={{ width: 'auto', padding: '10px 14px' }}
+                                    onClick={async () => {
+                                        try {
+                                            setBlockchainStatusError(null);
+                                            await connectWallet();
+                                        } catch (e) {
+                                            setBlockchainStatusError(e?.message || 'Failed to connect wallet');
+                                        }
+                                    }}
+                                    disabled={loading}
+                                >
+                                    {walletAddress ? 'Wallet Connected' : 'Connect MetaMask'}
+                                </button>
+                                {walletAddress && (
+                                    <span style={{ wordBreak: 'break-all' }}>
+                                        {walletAddress}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                         {blockchainTxHash && (
                             <div style={{ marginTop: '8px', wordBreak: 'break-all' }}>
                                 On-chain Tx: {blockchainTxHash}

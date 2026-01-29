@@ -6,11 +6,11 @@ const HomePage = () => {
     const navigate = useNavigate();
 
     const roles = [
-        { id: 'donor', name: 'Donor', icon: '💝' },
-        { id: 'government', name: 'Government', icon: '🏛️' },
-        { id: 'ngo', name: 'NGO', icon: '🤝' },
-        { id: 'vendor', name: 'Vendor', icon: '🏪' },
-        { id: 'auditor', name: 'Auditor', icon: '📊' }
+        { id: 'donor', name: 'Donor', abbr: 'D' },
+        { id: 'government', name: 'Government', abbr: 'G' },
+        { id: 'ngo', name: 'NGO', abbr: 'N' },
+        { id: 'vendor', name: 'Vendor', abbr: 'V' },
+        { id: 'auditor', name: 'Auditor', abbr: 'A' }
     ];
 
     const handleRoleClick = (roleId) => {
@@ -29,7 +29,7 @@ const HomePage = () => {
             {/* Header with Role Selection */}
             <header className="home-header">
                 <div className="header-logo">
-                    <span className="header-logo-icon">🔗</span>
+                    <span className="brand-mark" aria-hidden="true">TC</span>
                     <span className="header-logo-text">TrustChain</span>
                 </div>
 
@@ -41,15 +41,14 @@ const HomePage = () => {
                             onClick={() => handleRoleClick(role.id)}
                             title={`Sign in as ${role.name}`}
                         >
-                            <span className="role-nav-icon">{role.icon}</span>
+                            <span className="role-nav-badge" aria-hidden="true">{role.abbr}</span>
                             <span className="role-nav-name">{role.name}</span>
                         </button>
                     ))}
                 </nav>
 
                 <button className="citizen-nav-button" onClick={() => navigate('/citizen')}>
-                    <span className="citizen-nav-icon">👥</span>
-                    <span className="citizen-nav-name">Citizen</span>
+                    <span className="citizen-nav-name">Citizen Portal</span>
                 </button>
             </header>
 
@@ -57,36 +56,38 @@ const HomePage = () => {
                 {/* Hero Section */}
                 <div className="hero-section">
                     <div className="logo-large">
-                        <span className="logo-icon-large">🔗</span>
+                        <span className="brand-mark brand-mark--lg" aria-hidden="true">TC</span>
                         <h1>Trust<span className="logo-highlight">Chain</span></h1>
                     </div>
                     <p className="hero-tagline">
-                        Blockchain-Powered Transparency for NGO Governance
+                        Blockchain-Backed Transparency for Public Welfare Funding
                     </p>
                     <p className="hero-description">
-                        Revolutionizing fund management with immutable records, real-time tracking,
-                        and complete transparency on the Polygon blockchain.
+                        Track donations, allocations, invoices, and outcomes end-to-end with verifiable records,
+                        real-time monitoring, and auditable reporting.
                     </p>
 
                     <div className="hero-badges">
                         <div className="tech-badge">
-                            <span className="badge-icon">🔷</span>
-                            Polygon Blockchain
+                            <span className="badge-dot badge-dot--primary" aria-hidden="true"></span>
+                            Polygon-compatible ledger
                         </div>
                         <div className="tech-badge">
-                            <span className="badge-icon">📦</span>
-                            IPFS Storage
+                            <span className="badge-dot badge-dot--secondary" aria-hidden="true"></span>
+                            IPFS document integrity
                         </div>
                         <div className="tech-badge">
-                            <span className="badge-icon">🔒</span>
-                            End-to-End Encryption
+                            <span className="badge-dot badge-dot--tertiary" aria-hidden="true"></span>
+                            Secure access and audit trails
                         </div>
                     </div>
 
                     <div className="cta-buttons">
                         <button className="cta-primary" onClick={() => navigate('/citizen')}>
-                            <span className="cta-icon">👁️</span>
-                            View as Citizen
+                            View Citizen Portal
+                        </button>
+                        <button className="cta-secondary" onClick={() => navigate('/waitlist')}>
+                            Request Early Access
                         </button>
                     </div>
                 </div>
@@ -97,39 +98,39 @@ const HomePage = () => {
 
                     <div className="features-grid">
                         <div className="feature-card">
-                            <div className="feature-icon">💝</div>
+                            <div className="feature-icon" aria-hidden="true">D</div>
                             <h3>For Donors</h3>
-                            <p>Track every rupee donated with complete transparency and blockchain verification</p>
+                            <p>Verify how funds move from donation to impact with tamper-evident records.</p>
                         </div>
 
                         <div className="feature-card">
-                            <div className="feature-icon">🏛️</div>
+                            <div className="feature-icon" aria-hidden="true">G</div>
                             <h3>For Government</h3>
-                            <p>Monitor fund allocation, ensure compliance, and generate real-time reports</p>
+                            <p>Monitor allocations, enforce compliance, and generate audit-ready reports.</p>
                         </div>
 
                         <div className="feature-card">
-                            <div className="feature-icon">🤝</div>
+                            <div className="feature-icon" aria-hidden="true">N</div>
                             <h3>For NGOs</h3>
-                            <p>Manage projects efficiently with automated workflows and transparent records</p>
+                            <p>Manage projects with structured workflows, approvals, and transparent documentation.</p>
                         </div>
 
                         <div className="feature-card">
-                            <div className="feature-icon">👥</div>
+                            <div className="feature-icon" aria-hidden="true">C</div>
                             <h3>For Citizens</h3>
-                            <p>Access public records, verify transactions, and ensure accountability</p>
+                            <p>Access public information, validate activity, and support accountability.</p>
                         </div>
 
                         <div className="feature-card">
-                            <div className="feature-icon">🏪</div>
+                            <div className="feature-icon" aria-hidden="true">V</div>
                             <h3>For Vendors</h3>
-                            <p>Submit invoices, track payments, and maintain transparent service records</p>
+                            <p>Submit invoices, track payment status, and maintain traceable service records.</p>
                         </div>
 
                         <div className="feature-card">
-                            <div className="feature-icon">📊</div>
+                            <div className="feature-icon" aria-hidden="true">A</div>
                             <h3>For Auditors</h3>
-                            <p>Verify transactions, flag anomalies, and ensure regulatory compliance</p>
+                            <p>Verify transactions, flag anomalies, and support compliance reviews.</p>
                         </div>
                     </div>
                 </div>

@@ -91,8 +91,28 @@
     flex-shrink: 0;
 }
 
-.header-logo-icon {
-    font-size: 28px;
+.brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4F46E5, #7C3AED);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: -0.5px;
+    box-shadow: 0 10px 28px rgba(79, 70, 229, 0.35);
+    user-select: none;
+}
+
+.brand-mark--lg {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    font-size: 18px;
+    animation: pulse 3s infinite;
 }
 
 .header-logo-text {
@@ -134,8 +154,20 @@
     box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
-.role-nav-icon {
-    font-size: 18px;
+.role-nav-badge {
+    width: 22px;
+    height: 22px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+    user-select: none;
 }
 
 .role-nav-name {
@@ -165,10 +197,6 @@
     filter: brightness(1.1);
 }
 
-.citizen-nav-icon {
-    font-size: 18px;
-}
-
 .citizen-nav-name {
     font-size: 13px;
 }
@@ -193,11 +221,6 @@
     justify-content: center;
     gap: 16px;
     margin-bottom: 24px;
-}
-
-.logo-icon-large {
-    font-size: 64px;
-    animation: pulse 3s infinite;
 }
 
 @keyframes pulse {
@@ -264,8 +287,25 @@
     backdrop-filter: blur(10px);
 }
 
-.badge-icon {
-    font-size: 18px;
+.badge-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+}
+
+.badge-dot--primary {
+    background: #a5b4fc;
+}
+
+.badge-dot--secondary {
+    background: #34d399;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+}
+
+.badge-dot--tertiary {
+    background: #fbbf24;
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
 }
 
 .cta-buttons {
@@ -312,10 +352,6 @@
     transform: translateY(-3px);
 }
 
-.cta-icon {
-    font-size: 20px;
-}
-
 .features-section {
     margin-bottom: 80px;
 }
@@ -351,8 +387,20 @@
 }
 
 .feature-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e2e8f0;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+    user-select: none;
 }
 
 .feature-card h3 {

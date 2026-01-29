@@ -26,6 +26,12 @@ const AuthCallback = () => {
                 return;
             }
 
+            // Phone number is optional - TOTP (authenticator app) can be used instead
+            const phoneNumber =
+                user?.primaryPhoneNumber?.phoneNumber ||
+                user?.phoneNumbers?.[0]?.phoneNumber ||
+                '';
+
             // NOTE: We don't check Clerk metadata here anymore
             // The backend database is the SINGLE source of truth for roles
             // This allows users to re-register after database flush
@@ -45,7 +51,8 @@ const AuthCallback = () => {
                         body: JSON.stringify({
                             role: selectedRole,
                             name: user.fullName || user.primaryEmailAddress?.emailAddress || undefined,
-                            email: user.primaryEmailAddress?.emailAddress
+                            email: user.primaryEmailAddress?.emailAddress,
+                            phoneNumber
                         })
                     });
 
@@ -123,6 +130,14 @@ const AuthCallback = () => {
                         console.log('User role from database:', data);
 
                         if (data.role && data.role !== 'citizen') {
+                            await fetch(`${API_URL}/api/auth/sync-phone`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${token}`
+                                },
+                                body: JSON.stringify({ phoneNumber })
+                            }).catch(() => null);
                             // User has a role, redirect to their dashboard
                             sessionStorage.setItem('justAssignedRole', data.role);
                             hasRedirected.current = true;

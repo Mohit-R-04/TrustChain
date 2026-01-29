@@ -21,26 +21,17 @@ const DashboardHeader = ({ title, role }) => {
         auditor: '#7C3AED'
     };
 
-    const roleIcons = {
-        donor: '💝',
-        government: '🏛️',
-        ngo: '🤝',
-        vendor: '🏪',
-        auditor: '📊'
-    };
-
     return (
         <div className="dashboard-header">
             <div className="header-left">
                 <div className="logo-small">
-                    <span className="logo-icon-small">🔗</span>
+                    <span className="brand-mark" aria-hidden="true">TC</span>
                     <span className="logo-text">TrustChain</span>
                 </div>
             </div>
 
             <div className="header-center">
                 <div className="role-badge" style={{ '--role-color': roleColors[role] }}>
-                    <span className="role-icon-badge">{roleIcons[role]}</span>
                     <span className="role-name-badge">{title}</span>
                 </div>
             </div>
@@ -50,7 +41,6 @@ const DashboardHeader = ({ title, role }) => {
                     <span className="user-email">{user?.primaryEmailAddress?.emailAddress}</span>
                 </div>
                 <button className="logout-button" onClick={handleLogout}>
-                    <span className="logout-icon">🚪</span>
                     Logout
                 </button>
             </div>

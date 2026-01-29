@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
-const BlockchainPanel = () => {
+const BlockchainPanel = ({ getToken, scope }) => {
     const [status, setStatus] = useState(null);
     const [escrow, setEscrow] = useState(null);
     const [events, setEvents] = useState([]);
@@ -45,10 +45,9 @@ const BlockchainPanel = () => {
         const load = async () => {
             try {
                 setError(null);
-                const [statusRes, escrowRes, eventsRes] = await Promise.all([
+                const [statusRes, escrowRes] = await Promise.all([
                     fetch(`${API_URL}/api/public/blockchain/status`),
-                    fetch(`${API_URL}/api/public/blockchain/escrow/balance`),
-                    fetch(`${API_URL}/api/public/blockchain/events/recent`)
+                    fetch(`${API_URL}/api/public/blockchain/escrow/balance`)
                 ]);
                 if (statusRes.ok) {
                     setStatus(await statusRes.json());
@@ -56,16 +55,32 @@ const BlockchainPanel = () => {
                 if (escrowRes.ok) {
                     setEscrow(await escrowRes.json());
                 }
-                if (eventsRes.ok) {
-                    const data = await eventsRes.json();
-                    setEvents(Array.isArray(data) ? data : []);
+
+                let nextEvents = [];
+                if (scope === 'donor' && typeof getToken === 'function') {
+                    const token = await getToken();
+                    const fromAddress = window.localStorage.getItem('trustchain_wallet_address') || '';
+                    const url = `${API_URL}/api/donor/blockchain/events${fromAddress ? `?fromAddress=${encodeURIComponent(fromAddress)}` : ''}`;
+                    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                    if (res.ok) {
+                        const data = await res.json();
+                        nextEvents = Array.isArray(data) ? data : [];
+                    }
                 }
+                if (nextEvents.length === 0) {
+                    const eventsRes = await fetch(`${API_URL}/api/public/blockchain/events/recent`);
+                    if (eventsRes.ok) {
+                        const data = await eventsRes.json();
+                        nextEvents = Array.isArray(data) ? data : [];
+                    }
+                }
+                setEvents(nextEvents);
             } catch (e) {
                 setError(e?.message || 'Failed to load blockchain info');
             }
         };
         load();
-    }, []);
+    }, [getToken, scope]);
 
     if (status && !status.enabled) {
         return null;
@@ -92,12 +107,14 @@ const BlockchainPanel = () => {
                 )}
                 {escrow?.balanceWei && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'baseline' }}>
-                        <div style={{ fontWeight: 700, color: '#e2e8f0' }}>Escrow Wallet</div>
+                        <div style={{ fontWeight: 700, color: '#e2e8f0' }}>Escrow Wallet (Global)</div>
                         <div style={{ fontWeight: 800, color: '#e2e8f0' }}>₹{formatInrBigInt(weiToInr(escrow.balanceWei) || 0)}</div>
                     </div>
                 )}
                 <div style={{ display: 'grid', gap: '8px' }}>
-                    <div style={{ fontWeight: 700, color: '#e2e8f0' }}>Recent Activity</div>
+                    <div style={{ fontWeight: 700, color: '#e2e8f0' }}>
+                        Recent Activity{scope === 'donor' ? ' (You)' : ' (Global)'}
+                    </div>
                     {events.length === 0 ? (
                         <div style={{ color: '#94a3b8' }}>No recent blockchain events found.</div>
                     ) : (

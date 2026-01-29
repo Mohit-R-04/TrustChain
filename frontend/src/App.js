@@ -1,10 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ClerkProvider, SignIn, SignUp } from '@clerk/clerk-react';
+import { ClerkProvider, SignIn, Waitlist } from '@clerk/clerk-react';
 
 // Pages
 import HomePage from './pages/HomePage';
 import CitizenPage from './pages/CitizenPage';
+import CommunityNeedsPage from './pages/CommunityNeedsPage';
 import ProjectDetailsPage from './pages/ProjectDetailsPage';
 import DonorDashboard from './pages/DonorDashboard';
 import GovernmentDashboard from './pages/GovernmentDashboard';
@@ -14,6 +15,7 @@ import VendorKycPage from './pages/VendorKycPage';
 import NgoKycPage from './pages/NgoKycPage';
 import AuditorDashboard from './pages/AuditorDashboard';
 import StripePayment from './pages/StripePayment';
+import WaitlistThanksPage from './pages/WaitlistThanksPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthCallback from './components/AuthCallback';
 import ClearUserRole from './components/ClearUserRole';
@@ -90,18 +92,22 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/citizen" element={<CitizenPage />} />
+            <Route path="/community" element={<Navigate to="/citizen" replace />} />
+            <Route path="/community-needs" element={<Navigate to="/citizen" replace />} />
             <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
       )}
     >
-      <ClerkProvider publishableKey={clerkPubKey} clerkJSUrl={clerkJsFallbackUrl}>
+      <ClerkProvider publishableKey={clerkPubKey} clerkJSUrl={clerkJsFallbackUrl} waitlistUrl="/waitlist" telemetry={false}>
         <Router>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/citizen" element={<CitizenPage />} />
+            <Route path="/community" element={<Navigate to="/citizen" replace />} />
+            <Route path="/community-needs" element={<Navigate to="/citizen" replace />} />
             <Route path="/projects/:projectId" element={<ProjectDetailsPage />} />
 
             {/* Clerk Authentication Pages */}
@@ -150,14 +156,19 @@ function App() {
                   <SignIn
                     routing="path"
                     path="/sign-in"
-                    afterSignInUrl="/auth-callback"
-                    afterSignUpUrl="/auth-callback"
+                    withSignUp={false}
+                    waitlistUrl="/waitlist"
+                    forceRedirectUrl="/auth-callback"
                   />
                 </div>
               }
             />
             <Route
               path="/sign-up/*"
+              element={<Navigate to="/waitlist" replace />}
+            />
+            <Route
+              path="/waitlist/*"
               element={
                 <div style={{
                   display: 'flex',
@@ -198,15 +209,16 @@ function App() {
                   >
                     <span>←</span> Back
                   </button>
-                  <SignUp
+                  <Waitlist
                     routing="path"
-                    path="/sign-up"
-                    afterSignInUrl="/auth-callback"
-                    afterSignUpUrl="/auth-callback"
+                    path="/waitlist"
+                    signInUrl="/sign-in"
+                    afterJoinWaitlistUrl="/waitlist/thanks"
                   />
                 </div>
               }
             />
+            <Route path="/waitlist/thanks" element={<WaitlistThanksPage />} />
 
             {/* Auth Callback - handles redirect after Clerk authentication */}
             <Route path="/auth-callback" element={<AuthCallback />} />

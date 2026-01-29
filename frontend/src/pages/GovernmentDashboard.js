@@ -25,6 +25,7 @@ const GovernmentDashboard = () => {
     const [communityNeeds, setCommunityNeeds] = useState([]);
     const [communityNeedsLoading, setCommunityNeedsLoading] = useState(false);
     const [communityNeedsError, setCommunityNeedsError] = useState(null);
+    const [implementingNeedId, setImplementingNeedId] = useState(null);
     
     const [stats, setStats] = useState({
         totalSchemes: 0,
@@ -33,6 +34,7 @@ const GovernmentDashboard = () => {
     });
     
     const [transactions, setTransactions] = useState([]);
+    const [donations, setDonations] = useState([]);
     const [schemes, setSchemes] = useState([]);
 
     useEffect(() => {
@@ -68,6 +70,12 @@ const GovernmentDashboard = () => {
             if (txRes.ok) {
                 const data = await txRes.json();
                 setTransactions(data);
+            }
+
+            const donationRes = await fetch(`${API_URL}/api/donation`, { headers });
+            if (donationRes.ok) {
+                const data = await donationRes.json();
+                setDonations(Array.isArray(data) ? data : []);
             }
 
         } catch (error) {
@@ -137,6 +145,49 @@ const GovernmentDashboard = () => {
                 prev.map((n) => (n.needId === updated.needId ? updated : n))
             );
         } catch {
+        }
+    };
+
+    const implementNeed = async (need) => {
+        if (!need?.needId) return;
+        const ok = window.confirm('Implement this community need as an official project?');
+        if (!ok) return;
+
+        setImplementingNeedId(need.needId);
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/government/community-needs/${need.needId}/implement`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                const contentType = res.headers.get('content-type') || '';
+                let msg = 'Failed to implement community need';
+                if (contentType.includes('application/json')) {
+                    const body = await res.json().catch(() => null);
+                    msg = body?.error || body?.message || msg;
+                } else {
+                    const text = await res.text().catch(() => '');
+                    if (text) msg = text;
+                }
+                setCommunityNeedsError(msg);
+                return;
+            }
+            const scheme = await res.json().catch(() => null);
+            if (!scheme?.schemeId) {
+                setCommunityNeedsError('Implemented, but no project was returned by the server');
+                return;
+            }
+            await fetchDashboardData();
+            await fetchCommunityNeeds();
+            setShowCommunityNeedsModal(false);
+            setShowApproveModal(true);
+            setSelectedSchemeId(scheme.schemeId);
+            setShowSchemeDetailsModal(true);
+        } catch {
+            setCommunityNeedsError('Failed to implement community need');
+        } finally {
+            setImplementingNeedId(null);
         }
     };
 
@@ -246,9 +297,47 @@ const GovernmentDashboard = () => {
                             <button className="close-btn" onClick={() => setShowMonitorModal(false)}>×</button>
                         </div>
                         <div className="table-container">
-                            {transactions.length === 0 ? (
-                                <p className="empty-state">No transactions found.</p>
-                            ) : (
+                            {donations.length === 0 && transactions.length === 0 ? (
+                                <p className="empty-state">No records found.</p>
+                            ) : null}
+
+                            {donations.length > 0 ? (
+                                <>
+                                    <h4 style={{ margin: '12px 0', color: '#e2e8f0' }}>Donations</h4>
+                                    <table className="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Project</th>
+                                                <th>Amount</th>
+                                                <th>Ref</th>
+                                                <th>Status</th>
+                                                <th>Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {donations.map(d => (
+                                                <tr key={d.donationId}>
+                                                    <td className="monospace">{String(d.donationId).substring(0, 8)}...</td>
+                                                    <td>{d.scheme?.schemeName || 'Unknown'}</td>
+                                                    <td>₹{d.amount}</td>
+                                                    <td className="monospace">{d.transactionRef}</td>
+                                                    <td>
+                                                        <span className={`status-badge ${(d.status || 'completed').toLowerCase()}`}>
+                                                            {d.status || 'COMPLETED'}
+                                                        </span>
+                                                    </td>
+                                                    <td>{d.timestamp ? new Date(d.timestamp).toLocaleDateString() : ''}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </>
+                            ) : null}
+
+                            {transactions.length > 0 ? (
+                                <>
+                                    <h4 style={{ margin: '16px 0 12px', color: '#e2e8f0' }}>Vendor Escrow Transactions</h4>
                                 <table className="data-table">
                                     <thead>
                                         <tr>
@@ -262,18 +351,19 @@ const GovernmentDashboard = () => {
                                         {transactions.map(tx => (
                                             <tr key={tx.transactionId}>
                                                 <td className="monospace">{tx.transactionId.substring(0, 8)}...</td>
-                                                <td>₹{tx.amount}</td>
+                                                <td>₹{tx.totalAmount}</td>
                                                 <td>
                                                     <span className={`status-badge ${tx.status.toLowerCase()}`}>
                                                         {tx.status}
                                                     </span>
                                                 </td>
-                                                <td>{new Date(tx.timestamp).toLocaleDateString()}</td>
+                                                <td>{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : ''}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                            )}
+                                </>
+                            ) : null}
                         </div>
                     </div>
                 </div>
@@ -438,6 +528,13 @@ const GovernmentDashboard = () => {
                                                         </button>
                                                         <button className="action-btn small" onClick={() => voteOnNeed(n.needId, -1)}>
                                                             Downvote
+                                                        </button>
+                                                        <button
+                                                            className="action-btn small primary"
+                                                            onClick={() => implementNeed(n)}
+                                                            disabled={Boolean(n.implementedSchemeId) || implementingNeedId === n.needId}
+                                                        >
+                                                            Implement
                                                         </button>
                                                     </span>
                                                 </td>
