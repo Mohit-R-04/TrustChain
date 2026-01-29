@@ -1,9 +1,14 @@
 package com.trustchain.backend.controller;
 
+import com.trustchain.backend.annotation.RequireRole;
+import com.trustchain.backend.model.Government;
 import com.trustchain.backend.model.Scheme;
+import com.trustchain.backend.model.UserRole;
+import com.trustchain.backend.repository.GovernmentRepository;
 import com.trustchain.backend.service.SchemeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +21,9 @@ public class SchemeController {
 
     @Autowired
     private SchemeService schemeService;
+
+    @Autowired
+    private GovernmentRepository governmentRepository;
 
     @GetMapping
     public ResponseEntity<List<Scheme>> getAllSchemes(@RequestParam(required = false) String category) {
@@ -33,7 +41,17 @@ public class SchemeController {
     }
 
     @PostMapping
-    public ResponseEntity<Scheme> createScheme(@RequestBody Scheme scheme) {
+    @RequireRole(UserRole.GOVERNMENT)
+    public ResponseEntity<Scheme> createScheme(@RequestBody Scheme scheme, Authentication authentication) {
+        String userId = authentication.getName();
+        Government government = governmentRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    Government g = new Government();
+                    g.setUserId(userId);
+                    g.setGovtName("Government " + (userId.length() > 5 ? userId.substring(0, 5) : userId));
+                    return governmentRepository.save(g);
+                });
+        scheme.setGovernment(government);
         return ResponseEntity.ok(schemeService.createScheme(scheme));
     }
 

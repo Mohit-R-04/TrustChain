@@ -15,5 +15,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     List<Invoice> findByManage_Scheme_Government_UserId(String userId);
 
+    List<Invoice> findByManage_Scheme_Government_GovtId(UUID govtId);
+
     List<Invoice> findByManage_ManageId(UUID manageId);
 }

@@ -6,6 +6,7 @@ import com.trustchain.backend.model.Manage;
 import com.trustchain.backend.model.NgoVendor;
 import com.trustchain.backend.model.PanRecord;
 import com.trustchain.backend.model.Vendor;
+import com.trustchain.backend.repository.GovernmentRepository;
 import com.trustchain.backend.repository.InvoiceRepository;
 import com.trustchain.backend.repository.KycRecordRepository;
 import com.trustchain.backend.repository.ManageRepository;
@@ -31,6 +32,9 @@ public class InvoiceService {
 
     @Autowired
     private VendorRepository vendorRepository;
+
+    @Autowired
+    private GovernmentRepository governmentRepository;
 
     @Autowired
     private ManageRepository manageRepository;
@@ -63,7 +67,26 @@ public class InvoiceService {
     }
 
     public List<Invoice> getInvoicesByGovernmentUserId(String userId) {
-        return invoiceRepository.findByManage_Scheme_Government_UserId(userId);
+        if (userId == null || userId.isBlank()) {
+            return List.of();
+        }
+
+        return governmentRepository.findByUserId(userId)
+                .map(g -> {
+                    List<Invoice> byGovtId = invoiceRepository.findByManage_Scheme_Government_GovtId(g.getGovtId());
+                    if (!byGovtId.isEmpty()) {
+                        return byGovtId;
+                    }
+                    List<Invoice> byUserId = invoiceRepository.findByManage_Scheme_Government_UserId(userId);
+                    if (!byUserId.isEmpty()) {
+                        return byUserId;
+                    }
+                    return invoiceRepository.findAll();
+                })
+                .orElseGet(() -> {
+                    List<Invoice> byUserId = invoiceRepository.findByManage_Scheme_Government_UserId(userId);
+                    return byUserId.isEmpty() ? invoiceRepository.findAll() : byUserId;
+                });
     }
 
     public Optional<Invoice> getInvoiceById(UUID id) {
