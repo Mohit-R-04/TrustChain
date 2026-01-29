@@ -1,11 +1,15 @@
 package com.trustchain.backend.service;
 
 import com.trustchain.backend.dto.VendorBudgetAllocationRequest;
+import com.trustchain.backend.model.KycRecord;
 import com.trustchain.backend.model.NgoVendor;
 import com.trustchain.backend.model.Manage;
+import com.trustchain.backend.model.PanRecord;
 import com.trustchain.backend.model.Vendor;
+import com.trustchain.backend.repository.KycRecordRepository;
 import com.trustchain.backend.repository.ManageRepository;
 import com.trustchain.backend.repository.NgoVendorRepository;
+import com.trustchain.backend.repository.PanRecordRepository;
 import com.trustchain.backend.repository.VendorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -30,6 +34,12 @@ public class NgoVendorService {
 
     @Autowired
     private VendorRepository vendorRepository;
+
+    @Autowired
+    private KycRecordRepository kycRecordRepository;
+
+    @Autowired
+    private PanRecordRepository panRecordRepository;
 
     public List<NgoVendor> getAllNgoVendors() {
         return ngoVendorRepository.findAll();
@@ -232,6 +242,14 @@ public class NgoVendorService {
             String normalized = status.trim().toUpperCase();
             if (!normalized.equals("ACCEPTED") && !normalized.equals("REJECTED")) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "status must be ACCEPTED or REJECTED");
+            }
+
+            if (normalized.equals("ACCEPTED")) {
+                boolean aadhaarVerified = kycRecordRepository.existsByVendorIdAndStatus(currentUserId, KycRecord.VerificationStatus.VERIFIED);
+                boolean panVerified = panRecordRepository.existsByVendorIdAndStatus(currentUserId, PanRecord.VerificationStatus.VERIFIED);
+                if (!aadhaarVerified || !panVerified) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "KYC not verified");
+                }
             }
 
             ngoVendor.setStatus(normalized);

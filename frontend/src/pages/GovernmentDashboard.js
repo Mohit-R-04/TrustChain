@@ -17,6 +17,7 @@ const GovernmentDashboard = () => {
     const [showDonationModal, setShowDonationModal] = useState(false);
     const [showCommunityNeedsModal, setShowCommunityNeedsModal] = useState(false);
     const [showSchemeDetailsModal, setShowSchemeDetailsModal] = useState(false);
+    const [showInvoicesModal, setShowInvoicesModal] = useState(false);
     const [selectedSchemeId, setSelectedSchemeId] = useState(null);
     const [schemeDetails, setSchemeDetails] = useState(null);
     const [schemeDetailsLoading, setSchemeDetailsLoading] = useState(false);
@@ -34,6 +35,8 @@ const GovernmentDashboard = () => {
     
     const [transactions, setTransactions] = useState([]);
     const [schemes, setSchemes] = useState([]);
+    const [invoices, setInvoices] = useState([]);
+    const [invoicesError, setInvoicesError] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -140,6 +143,50 @@ const GovernmentDashboard = () => {
         }
     };
 
+    const fetchInvoices = async () => {
+        try {
+            const token = await getToken();
+            const headers = { 'Authorization': `Bearer ${token}` };
+            const res = await fetch(`${API_URL}/api/invoice/visible`, { headers });
+            if (res.ok) {
+                const data = await res.json();
+                setInvoices(Array.isArray(data) ? data : []);
+                setInvoicesError(null);
+            } else {
+                setInvoices([]);
+                setInvoicesError(`Failed to fetch invoices (Status: ${res.status})`);
+            }
+        } catch (e) {
+            console.error('Error fetching invoices:', e);
+            setInvoices([]);
+            setInvoicesError('Failed to fetch invoices');
+        }
+    };
+
+    const governmentInvoiceDecision = async (invoiceId, decision) => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/invoice/${invoiceId}/government/decision`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ decision })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setInvoices(prev => prev.map(i => i.invoiceId === updated.invoiceId ? updated : i));
+            } else {
+                const errText = await res.text();
+                alert(errText || 'Failed to update invoice');
+            }
+        } catch (e) {
+            console.error('Error updating invoice:', e);
+            alert('Error updating invoice');
+        }
+    };
+
     return (
         <div className="dashboard-container">
             <DashboardHeader title="Government Dashboard" role="government" />
@@ -203,6 +250,15 @@ const GovernmentDashboard = () => {
                             }}
                         >
                             Projects
+                        </button>
+                        <button
+                            className="action-btn secondary"
+                            onClick={() => {
+                                fetchInvoices();
+                                setShowInvoicesModal(true);
+                            }}
+                        >
+                            Invoices
                         </button>
                         <button
                             className="action-btn secondary"
@@ -271,6 +327,67 @@ const GovernmentDashboard = () => {
                                                 <td>{new Date(tx.timestamp).toLocaleDateString()}</td>
                                             </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showInvoicesModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content large-modal">
+                        <div className="modal-header">
+                            <h3>Invoices</h3>
+                            <button className="close-btn" onClick={() => setShowInvoicesModal(false)}>×</button>
+                        </div>
+                        <div className="table-container">
+                            {invoices.length === 0 ? (
+                                <p className="empty-state">{invoicesError || 'No invoices found.'}</p>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scheme</th>
+                                            <th>NGO</th>
+                                            <th>Vendor</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>IPFS</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {invoices.map(inv => {
+                                            const status = (inv.status || '').toUpperCase();
+                                            const statusClass = status === 'ACCEPTED' ? 'accepted' : status === 'REJECTED' ? 'rejected' : status === 'NGO_ACCEPTED' ? 'pending' : 'pending';
+                                            const gatewayBaseRaw = process.env.REACT_APP_IPFS_GATEWAY_BASE || 'https://gateway.pinata.cloud/ipfs/';
+                                            const gatewayBase = gatewayBaseRaw.endsWith('/') ? gatewayBaseRaw : `${gatewayBaseRaw}/`;
+                                            const ipfsUrl = inv.invoiceIpfsHash ? `${gatewayBase}${inv.invoiceIpfsHash}` : null;
+                                            return (
+                                                <tr key={inv.invoiceId}>
+                                                    <td>{inv.manage?.scheme?.schemeName || inv.manage?.scheme?.name || '-'}</td>
+                                                    <td>{inv.manage?.ngo?.name || '-'}</td>
+                                                    <td>{inv.vendor?.name || inv.vendor?.email || '-'}</td>
+                                                    <td>₹{Number(inv.amount || 0).toLocaleString()}</td>
+                                                    <td>
+                                                        <span className={`status-badge ${statusClass}`}>{status || 'PENDING'}</span>
+                                                    </td>
+                                                    <td>
+                                                        {ipfsUrl ? <a href={ipfsUrl} target="_blank" rel="noreferrer">View</a> : '-'}
+                                                    </td>
+                                                    <td>
+                                                        {status === 'NGO_ACCEPTED' && (
+                                                            <div className="action-buttons-small">
+                                                                <button className="btn-accept" onClick={() => governmentInvoiceDecision(inv.invoiceId, 'ACCEPTED')}>Accept</button>
+                                                                <button className="btn-reject" onClick={() => governmentInvoiceDecision(inv.invoiceId, 'REJECTED')}>Reject</button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             )}

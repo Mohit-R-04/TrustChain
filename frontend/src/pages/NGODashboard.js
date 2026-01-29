@@ -46,6 +46,10 @@ const NGODashboard = () => {
         fundsReceived: 0
     });
 
+    const [showInvoices, setShowInvoices] = useState(false);
+    const [invoices, setInvoices] = useState([]);
+    const [invoicesError, setInvoicesError] = useState(null);
+
     useEffect(() => {
         if (user) {
             fetchDashboardData();
@@ -357,6 +361,51 @@ const NGODashboard = () => {
         }
     };
 
+    const fetchInvoices = async () => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/invoice/visible`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setInvoices(Array.isArray(data) ? data : []);
+                setInvoicesError(null);
+            } else {
+                setInvoices([]);
+                setInvoicesError(`Failed to fetch invoices (Status: ${res.status})`);
+            }
+        } catch (e) {
+            console.error('Error fetching invoices:', e);
+            setInvoices([]);
+            setInvoicesError('Failed to fetch invoices');
+        }
+    };
+
+    const ngoInvoiceDecision = async (invoiceId, decision) => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/invoice/${invoiceId}/ngo/decision`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ decision })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setInvoices(prev => prev.map(i => i.invoiceId === updated.invoiceId ? updated : i));
+            } else {
+                const errText = await res.text();
+                alert(errText || 'Failed to update invoice');
+            }
+        } catch (e) {
+            console.error('Error updating invoice:', e);
+            alert('Error updating invoice');
+        }
+    };
+
     return (
         <div className="dashboard-container">
             <DashboardHeader title="NGO Dashboard" role="ngo" />
@@ -425,6 +474,15 @@ const NGODashboard = () => {
                             onClick={() => setShowUploadDocs(true)}
                         >
                             Upload Documents
+                        </button>
+                        <button
+                            className="action-btn secondary"
+                            onClick={() => {
+                                fetchInvoices();
+                                setShowInvoices(true);
+                            }}
+                        >
+                            Invoices
                         </button>
                         <button 
                             className="action-btn secondary"
@@ -798,6 +856,65 @@ const NGODashboard = () => {
                                 </div>
                             </form>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {showInvoices && (
+                <div className="modal-overlay">
+                    <div className="modal-content large-modal">
+                        <div className="modal-header">
+                            <h3>Invoices</h3>
+                            <button className="close-btn" onClick={() => setShowInvoices(false)}>×</button>
+                        </div>
+                        <div className="table-container">
+                            {invoices.length === 0 ? (
+                                <p className="empty-state">{invoicesError || 'No invoices found.'}</p>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scheme</th>
+                                            <th>Vendor</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>IPFS</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {invoices.map(inv => {
+                                            const status = (inv.status || '').toUpperCase();
+                                            const statusClass = status === 'ACCEPTED' ? 'accepted' : status === 'REJECTED' ? 'rejected' : status === 'NGO_ACCEPTED' ? 'accepted' : 'pending';
+                                            const gatewayBaseRaw = process.env.REACT_APP_IPFS_GATEWAY_BASE || 'https://gateway.pinata.cloud/ipfs/';
+                                            const gatewayBase = gatewayBaseRaw.endsWith('/') ? gatewayBaseRaw : `${gatewayBaseRaw}/`;
+                                            const ipfsUrl = inv.invoiceIpfsHash ? `${gatewayBase}${inv.invoiceIpfsHash}` : null;
+                                            return (
+                                                <tr key={inv.invoiceId}>
+                                                    <td>{inv.manage?.scheme?.schemeName || inv.manage?.scheme?.name || '-'}</td>
+                                                    <td>{inv.vendor?.name || inv.vendor?.email || '-'}</td>
+                                                    <td>₹{Number(inv.amount || 0).toLocaleString()}</td>
+                                                    <td>
+                                                        <span className={`status-badge ${statusClass}`}>{status || 'PENDING'}</span>
+                                                    </td>
+                                                    <td>
+                                                        {ipfsUrl ? <a href={ipfsUrl} target="_blank" rel="noreferrer">View</a> : '-'}
+                                                    </td>
+                                                    <td>
+                                                        {status === 'PENDING' && (
+                                                            <div className="action-buttons-small">
+                                                                <button className="btn-accept" onClick={() => ngoInvoiceDecision(inv.invoiceId, 'ACCEPTED')}>Accept</button>
+                                                                <button className="btn-reject" onClick={() => ngoInvoiceDecision(inv.invoiceId, 'REJECTED')}>Reject</button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

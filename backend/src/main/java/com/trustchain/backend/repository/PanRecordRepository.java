@@ -16,4 +16,6 @@ public interface PanRecordRepository extends JpaRepository<PanRecord, Long> {
     Optional<PanRecord> findByVendorId(String vendorId);
 
     boolean existsByVendorId(String vendorId);
+
+    boolean existsByVendorIdAndStatus(String vendorId, PanRecord.VerificationStatus status);
 }

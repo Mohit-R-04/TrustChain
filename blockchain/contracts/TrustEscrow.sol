@@ -59,6 +59,7 @@ contract TrustChainEscrow {
     }
 
     mapping(uint256 => Scheme) private schemes; // schemeId => Scheme
+    mapping(bytes32 => string) private invoiceHashes;
 
     // --- Events ---
     event SchemeCreated(uint256 indexed schemeId, address indexed by);
@@ -73,6 +74,7 @@ contract TrustChainEscrow {
     event MilestoneRejected(uint256 indexed schemeId, uint256 indexed milestoneId, address approver);
     event PaymentReleased(uint256 indexed schemeId, uint256 indexed milestoneId, address indexed vendor, uint256 amount);
     event RefundIssued(uint256 indexed schemeId, uint256 indexed milestoneId, address indexed to, uint256 amount);
+    event InvoiceHashStored(bytes32 indexed invoiceId, address indexed by, string ipfsHash);
 
     constructor() {
         owner = msg.sender;
@@ -213,6 +215,17 @@ contract TrustChainEscrow {
         require(m.status != MilestoneStatus.Uninitialized, "milestone missing");
         m.quotationHash = ipfsHash;
         emit QuotationStored(schemeId, milestoneId, ipfsHash);
+    }
+
+    function storeInvoiceHash(bytes32 invoiceId, string calldata ipfsHash) external onlyOwner {
+        require(invoiceId != bytes32(0), "invoiceId zero");
+        require(bytes(ipfsHash).length > 0, "ipfsHash empty");
+        invoiceHashes[invoiceId] = ipfsHash;
+        emit InvoiceHashStored(invoiceId, msg.sender, ipfsHash);
+    }
+
+    function getInvoiceHash(bytes32 invoiceId) external view returns (string memory) {
+        return invoiceHashes[invoiceId];
     }
 
     // --- Milestones ---

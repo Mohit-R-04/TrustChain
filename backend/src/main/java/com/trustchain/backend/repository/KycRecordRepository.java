@@ -16,4 +16,6 @@ public interface KycRecordRepository extends JpaRepository<KycRecord, Long> {
     Optional<KycRecord> findByVendorId(String vendorId);
 
     boolean existsByVendorId(String vendorId);
+
+    boolean existsByVendorIdAndStatus(String vendorId, KycRecord.VerificationStatus status);
 }

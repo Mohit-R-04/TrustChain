@@ -9,9 +9,9 @@ import path from 'path';
 
 // Initialize web3.storage client
 function getWeb3StorageClient() {
-  const token = process.env.WEB3_STORAGE_TOKEN;
+  const token = process.env.IPFS_WEB3STORAGE_TOKEN || process.env.WEB3_STORAGE_TOKEN;
   if (!token) {
-    throw new Error('WEB3_STORAGE_TOKEN environment variable not set. Get one at https://web3.storage');
+    throw new Error('IPFS token not set (IPFS_WEB3STORAGE_TOKEN or WEB3_STORAGE_TOKEN). Get one at https://web3.storage');
   }
   return new Web3Storage({ token });
 }
@@ -57,6 +57,15 @@ async function uploadFileToIPFS(filePath, fileName = null) {
  */
 async function uploadQuotation(quotationPath) {
   return uploadFileToIPFS(quotationPath, 'quotation');
+}
+
+/**
+ * Upload vendor invoice (PDF/image)
+ * @param {string} invoicePath - Path to invoice file
+ * @returns {Promise<string>} - CID hash
+ */
+async function uploadInvoice(invoicePath) {
+  return uploadFileToIPFS(invoicePath, 'invoice');
 }
 
 /**
@@ -119,6 +128,7 @@ async function verifyIPFSHash(cid) {
 export {
   uploadFileToIPFS,
   uploadQuotation,
+  uploadInvoice,
   uploadProofBundle,
   getIPFSUrl,
   verifyIPFSHash,

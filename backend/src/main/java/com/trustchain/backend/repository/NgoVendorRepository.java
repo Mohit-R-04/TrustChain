@@ -20,6 +20,8 @@ public interface NgoVendorRepository extends JpaRepository<NgoVendor, UUID> {
 
     Optional<NgoVendor> findByManage_ManageIdAndVendor_VendorId(UUID manageId, UUID vendorId);
 
+    Optional<NgoVendor> findByManage_ManageIdAndVendor_UserId(UUID manageId, String userId);
+
     @Query("""
             select coalesce(sum(coalesce(nv.allocatedBudget, 0)), 0)
             from NgoVendor nv

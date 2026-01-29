@@ -374,6 +374,23 @@ describe("TrustChainEscrow", function () {
     });
   });
 
+  describe("Invoice Hash Storage", function () {
+    it("Should store invoice hash as owner", async function () {
+      const invoiceId = hre.ethers.utils.formatBytes32String("inv-1");
+      const cid = "bafy-invoice-1";
+      await expect(contract.storeInvoiceHash(invoiceId, cid))
+        .to.emit(contract, "InvoiceHashStored")
+        .withArgs(invoiceId, owner.address, cid);
+      const stored = await contract.getInvoiceHash(invoiceId);
+      expect(stored).to.equal(cid);
+    });
+
+    it("Should prevent non-owner from storing invoice hash", async function () {
+      const invoiceId = hre.ethers.utils.formatBytes32String("inv-2");
+      await expect(contract.connect(vendor).storeInvoiceHash(invoiceId, "bafy-invoice-2")).to.be.revertedWith("not owner");
+    });
+  });
+
   describe("Ownership & Access Control", function () {
     it("Should transfer ownership", async function () {
       await contract.transferOwnership(donor.address);

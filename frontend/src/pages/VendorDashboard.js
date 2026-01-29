@@ -25,7 +25,7 @@ const VendorDashboard = () => {
     const [invoiceForm, setInvoiceForm] = useState({
         manageId: '',
         amount: '',
-        invoiceIpfsHash: ''
+        invoiceFile: null
     });
 
     const [vendorDetails, setVendorDetails] = useState(null);
@@ -102,7 +102,10 @@ const VendorDashboard = () => {
             ]);
 
             if (aadhaarRes.ok && panRes.ok) {
-                setKycStatus('VERIFIED');
+                const [aadhaarData, panData] = await Promise.all([aadhaarRes.json(), panRes.json()]);
+                const aadhaarVerified = aadhaarData?.status === 'VERIFIED';
+                const panVerified = panData?.status === 'VERIFIED';
+                setKycStatus(aadhaarVerified && panVerified ? 'VERIFIED' : 'PENDING');
             } else {
                 setKycStatus('PENDING');
             }
@@ -136,28 +139,34 @@ const VendorDashboard = () => {
             alert("Vendor details not found. Please contact support.");
             return;
         }
+        if (!invoiceForm.invoiceFile) {
+            alert("Please upload the invoice file.");
+            return;
+        }
         try {
             const token = await getToken();
-            const response = await fetch(`${API_URL}/api/invoice`, {
+            if (!token) {
+                alert("Not authenticated. Please sign in again.");
+                return;
+            }
+            const formData = new FormData();
+            formData.append('manageId', invoiceForm.manageId);
+            formData.append('amount', String(parseFloat(invoiceForm.amount)));
+            formData.append('file', invoiceForm.invoiceFile);
+
+            const response = await fetch(`${API_URL}/api/invoice/upload`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    amount: parseFloat(invoiceForm.amount),
-                    invoiceIpfsHash: invoiceForm.invoiceIpfsHash,
-                    status: 'PENDING',
-                    vendor: { vendorId: vendorDetails.vendorId }, 
-                    manage: { manageId: invoiceForm.manageId }
-                })
+                body: formData
             });
 
             if (response.ok) {
                 alert('Invoice submitted successfully!');
                 setActiveModal(null);
                 fetchDashboardData();
-                setInvoiceForm({ manageId: '', amount: '', invoiceIpfsHash: '' });
+                setInvoiceForm({ manageId: '', amount: '', invoiceFile: null });
             } else {
                 const errText = await response.text();
                 alert('Failed to submit invoice: ' + errText);
@@ -304,12 +313,10 @@ const VendorDashboard = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Invoice Reference / IPFS Hash</label>
+                                <label>Upload Invoice</label>
                                 <input 
-                                    type="text" 
-                                    value={invoiceForm.invoiceIpfsHash}
-                                    onChange={e => setInvoiceForm({...invoiceForm, invoiceIpfsHash: e.target.value})}
-                                    placeholder="Enter document hash or reference"
+                                    type="file"
+                                    onChange={e => setInvoiceForm({...invoiceForm, invoiceFile: e.target.files?.[0] || null})}
                                     required
                                 />
                             </div>

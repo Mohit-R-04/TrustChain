@@ -102,14 +102,26 @@ public class JwtTokenValidator {
 
     private JsonNode decodePayload(String token) {
         try {
-            String[] parts = token.split("\\.");
+            if (token == null) {
+                return null;
+            }
+            String normalized = token.trim();
+            String[] parts = normalized.split("\\.");
             if (parts.length < 2)
                 return null;
-            byte[] decoded = Base64.getUrlDecoder().decode(parts[1]);
+            byte[] decoded = Base64.getUrlDecoder().decode(padBase64Url(parts[1]));
             return objectMapper.readTree(decoded);
         } catch (Exception e) {
             logger.error("Error decoding token: {}", e.getMessage());
             return null;
         }
+    }
+
+    private String padBase64Url(String value) {
+        int mod = value.length() % 4;
+        if (mod == 0) {
+            return value;
+        }
+        return value + "=".repeat(4 - mod);
     }
 }

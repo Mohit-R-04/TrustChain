@@ -10,4 +10,10 @@ import java.util.UUID;
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findByVendor_UserId(String userId);
+
+    List<Invoice> findByManage_Ngo_UserId(String userId);
+
+    List<Invoice> findByManage_Scheme_Government_UserId(String userId);
+
+    List<Invoice> findByManage_ManageId(UUID manageId);
 }

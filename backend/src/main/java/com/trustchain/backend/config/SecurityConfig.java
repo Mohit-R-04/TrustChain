@@ -43,6 +43,14 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 // Allow CORS preflight requests
                                                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                                .requestMatchers("/error", "/error/**").permitAll()
+
+                                                // Invoice upload must be reachable by the vendor portal even when Spring
+                                                // Security isn't able to authenticate the request (controller validates JWT).
+                                                .requestMatchers(
+                                                                "/api/invoice/upload",
+                                                                "/api/invoice/upload/",
+                                                                "/api/invoice/upload/**").permitAll()
 
                                                 // Public endpoints - no authentication required
                                                 .requestMatchers("/api/public/**").permitAll()
@@ -64,6 +72,12 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.POST, "/api/community-needs/**").permitAll()
                                                 // Vendor endpoints - allow authenticated reads (needed for NGO portal vendor selection)
                                                 .requestMatchers(HttpMethod.GET, "/api/vendor/**").authenticated()
+
+                                                // Invoice endpoints - readable by authenticated users; write/approve is role-scoped
+                                                .requestMatchers(HttpMethod.GET, "/api/invoice/**").authenticated()
+                                                .requestMatchers(HttpMethod.POST, "/api/invoice").denyAll()
+                                                .requestMatchers(HttpMethod.PATCH, "/api/invoice/*/ngo/**").authenticated()
+                                                .requestMatchers(HttpMethod.PATCH, "/api/invoice/*/government/**").authenticated()
 
                                                 // Allow NGO user details fetch for any authenticated user (fixes 403 on dashboard load)
                                                 .requestMatchers("/api/ngo/user/**").authenticated()
@@ -123,7 +137,12 @@ public class SecurityConfig {
                                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
                 // Allow all headers
-                configuration.setAllowedHeaders(List.of("*"));
+                configuration.setAllowedHeaders(Arrays.asList(
+                                "Authorization",
+                                "Content-Type",
+                                "Accept",
+                                "Origin",
+                                "X-Requested-With"));
 
                 // Allow credentials (cookies, authorization headers)
                 configuration.setAllowCredentials(true);
