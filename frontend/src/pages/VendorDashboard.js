@@ -10,6 +10,12 @@ const VendorDashboard = () => {
     const { getToken } = useAuth();
     const navigate = useNavigate();
     const [kycStatus, setKycStatus] = useState('LOADING'); // LOADING, VERIFIED, PENDING
+    const [schemeUuid, setSchemeUuid] = useState('');
+    const [milestoneId, setMilestoneId] = useState('');
+    const [ipfsHash, setIpfsHash] = useState('');
+    const [submitError, setSubmitError] = useState(null);
+    const [submitTxHash, setSubmitTxHash] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (isLoaded && user) {
@@ -36,6 +42,52 @@ const VendorDashboard = () => {
         } catch (error) {
             console.error('Error checking KYC status:', error);
             setKycStatus('PENDING');
+        }
+    };
+
+    const submitProofOnChain = async () => {
+        setSubmitError(null);
+        setSubmitTxHash(null);
+        setSubmitting(true);
+        try {
+            if (!window.ethereum) {
+                throw new Error('MetaMask is required to submit proof on-chain');
+            }
+            if (!schemeUuid || !milestoneId || !ipfsHash) {
+                throw new Error('Scheme UUID, milestone ID, and IPFS hash are required');
+            }
+            const token = await getToken();
+            const txResponse = await fetch(
+                `${API_URL}/api/blockchain/tx/submitProof/${schemeUuid}/${milestoneId}?ipfsHash=${encodeURIComponent(ipfsHash)}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
+            if (!txResponse.ok) {
+                const errData = await txResponse.json().catch(() => ({}));
+                throw new Error(errData?.message || 'Failed to build blockchain transaction');
+            }
+            const txData = await txResponse.json();
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const from = accounts?.[0];
+            const sentHash = await window.ethereum.request({
+                method: 'eth_sendTransaction',
+                params: [
+                    {
+                        from,
+                        to: txData.to,
+                        value: '0x0',
+                        data: txData.data
+                    }
+                ]
+            });
+            setSubmitTxHash(sentHash);
+        } catch (e) {
+            setSubmitError(e?.message || 'Failed to submit proof');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -117,6 +169,41 @@ const VendorDashboard = () => {
                         <button className="action-btn primary" disabled={kycStatus !== 'VERIFIED'} title={kycStatus !== 'VERIFIED' ? "Complete KYC first" : ""}>Submit Invoice</button>
                         <button className="action-btn secondary">View Orders</button>
                         <button className="action-btn secondary">Payment History</button>
+                    </div>
+                </div>
+
+                <div className="action-section">
+                    <h2>Submit Proof On-Chain</h2>
+                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', borderRadius: '16px', padding: '16px', display: 'grid', gap: '12px' }}>
+                        <input
+                            value={schemeUuid}
+                            onChange={(e) => setSchemeUuid(e.target.value)}
+                            placeholder="Scheme UUID (from app)"
+                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
+                        />
+                        <input
+                            value={milestoneId}
+                            onChange={(e) => setMilestoneId(e.target.value)}
+                            placeholder="Milestone ID (number)"
+                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
+                        />
+                        <input
+                            value={ipfsHash}
+                            onChange={(e) => setIpfsHash(e.target.value)}
+                            placeholder="IPFS CID (proof bundle)"
+                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
+                        />
+                        <button
+                            className="action-btn primary"
+                            onClick={submitProofOnChain}
+                            disabled={kycStatus !== 'VERIFIED' || submitting}
+                            title={kycStatus !== 'VERIFIED' ? "Complete KYC first" : ""}
+                            style={{ justifySelf: 'start' }}
+                        >
+                            {submitting ? 'Submitting...' : 'Submit Proof via MetaMask'}
+                        </button>
+                        {submitError && <div style={{ color: '#ef4444' }}>{submitError}</div>}
+                        {submitTxHash && <div style={{ color: '#94a3b8', wordBreak: 'break-all' }}>Tx: {submitTxHash}</div>}
                     </div>
                 </div>
             </div>

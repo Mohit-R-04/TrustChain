@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import './StripePayment.css';
@@ -9,11 +9,15 @@ const StripePayment = () => {
     const { state } = useLocation();
     const navigate = useNavigate();
     const { getToken } = useAuth();
-    const [amount, setAmount] = useState('');
+    const [amountInr, setAmountInr] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('card');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [blockchainEnabled, setBlockchainEnabled] = useState(false);
+    const [blockchainDemoMode, setBlockchainDemoMode] = useState(false);
+    const [blockchainTxHash, setBlockchainTxHash] = useState(null);
+    const [blockchainStatusError, setBlockchainStatusError] = useState(null);
 
     // Form states
     const [cardDetails, setCardDetails] = useState({
@@ -25,6 +29,86 @@ const StripePayment = () => {
 
     // Retrieve scheme details from navigation state
     const { schemeId, schemeName } = state || {};
+    const inrToWeiMultiplier = window.BigInt('100000000000');
+    const amoyChainIdHex = '0x13882';
+
+    const getOnChainWeiForInr = () => {
+        try {
+            if (!amountInr) return null;
+            const inr = window.BigInt(amountInr);
+            if (inr <= 0) return null;
+            return inr * inrToWeiMultiplier;
+        } catch {
+            return null;
+        }
+    };
+
+    const getOnChainPolForInr = () => {
+        const wei = getOnChainWeiForInr();
+        if (!wei) return null;
+        const whole = wei / window.BigInt('1000000000000000000');
+        const frac = (wei % window.BigInt('1000000000000000000')).toString().padStart(18, '0').replace(/0+$/, '');
+        return frac ? `${whole.toString()}.${frac}` : whole.toString();
+    };
+
+    const ensurePolygonAmoyNetwork = async () => {
+        const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+        if (currentChainId === amoyChainIdHex) return;
+        try {
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: amoyChainIdHex }]
+            });
+        } catch (e) {
+            if (e && (e.code === 4902 || e?.data?.originalError?.code === 4902)) {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [
+                        {
+                            chainId: amoyChainIdHex,
+                            chainName: 'Polygon Amoy',
+                            rpcUrls: ['https://rpc-amoy.polygon.technology'],
+                            nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+                            blockExplorerUrls: ['https://amoy.polygonscan.com']
+                        }
+                    ]
+                });
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: amoyChainIdHex }]
+                });
+            } else {
+                throw new Error('Switch MetaMask network to Polygon Amoy (chainId 80002) and try again');
+            }
+        }
+        const after = await window.ethereum.request({ method: 'eth_chainId' });
+        if (after !== amoyChainIdHex) {
+            throw new Error('MetaMask network must be Polygon Amoy (chainId 80002)');
+        }
+    };
+
+    useEffect(() => {
+        fetchBlockchainStatus();
+    }, []);
+
+    const fetchBlockchainStatus = async () => {
+        try {
+            const token = await getToken();
+            const response = await fetch(`${API_URL}/api/blockchain/status`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            setBlockchainEnabled(!!data.enabled && !!data.contractAddress);
+            setBlockchainDemoMode(!!data.demoMode);
+        } catch (err) {
+            setBlockchainStatusError(err?.message || 'Failed to load blockchain status');
+        }
+    };
 
     if (!schemeId) {
         return (
@@ -43,6 +127,7 @@ const StripePayment = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setBlockchainTxHash(null);
 
         try {
             // Validation
@@ -66,7 +151,7 @@ const StripePayment = () => {
                 body: JSON.stringify({
                     schemeId: schemeId,
                     schemeName: schemeName,
-                    amount: parseFloat(amount),
+                    amount: parseFloat(amountInr),
                     paymentToken: paymentMethod === 'card' ? "tok_visa" : "tok_upi_mock"
                 })
             });
@@ -74,6 +159,78 @@ const StripePayment = () => {
             const data = await response.json();
 
             if (response.ok) {
+                if (blockchainEnabled) {
+                    const token = await getToken();
+                    const onChainWei = getOnChainWeiForInr();
+                    if (!onChainWei) {
+                        throw new Error('Enter a valid INR amount');
+                    }
+
+                    let donorAddress = '0x0000000000000000000000000000000000000000';
+                    if (window.ethereum) {
+                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        if (accounts?.[0]) donorAddress = accounts[0];
+                    } else if (!blockchainDemoMode) {
+                        throw new Error('Blockchain is enabled, but MetaMask is not available. Open http://localhost:3000 in Chrome/Brave with MetaMask installed (IDE preview browsers do not support extensions).');
+                    }
+
+                    let txHashToStore = '';
+
+                    if (blockchainDemoMode) {
+                        const demoRes = await fetch(
+                            `${API_URL}/api/blockchain/demo/deposit/${schemeId}?amountWei=${encodeURIComponent(onChainWei.toString())}&donorAddress=${encodeURIComponent(donorAddress)}`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            }
+                        );
+                        const demoData = await demoRes.json().catch(() => ({}));
+                        if (!demoRes.ok) {
+                            throw new Error(demoData?.message || 'Demo deposit failed');
+                        }
+                        txHashToStore = demoData.txHash || '';
+                        setBlockchainTxHash(txHashToStore || null);
+                    } else {
+                        await ensurePolygonAmoyNetwork();
+                        const txResponse = await fetch(
+                            `${API_URL}/api/blockchain/tx/deposit/${schemeId}?amountWei=${encodeURIComponent(onChainWei.toString())}`,
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            }
+                        );
+                        if (!txResponse.ok) {
+                            const errData = await txResponse.json().catch(() => ({}));
+                            throw new Error(errData?.message || 'Failed to build blockchain transaction');
+                        }
+                        const txData = await txResponse.json();
+                        if (!txData?.to || typeof txData.to !== 'string' || !txData.to.startsWith('0x') || txData.to.length !== 42) {
+                            throw new Error('Invalid escrow contract address returned by backend');
+                        }
+                        const valueHex = '0x' + window.BigInt(txData.valueWei).toString(16);
+                        const sentHash = await window.ethereum.request({
+                            method: 'eth_sendTransaction',
+                            params: [
+                                {
+                                    from: donorAddress,
+                                    to: txData.to,
+                                    value: valueHex,
+                                    data: txData.data
+                                }
+                            ]
+                        });
+                        txHashToStore = sentHash;
+                        setBlockchainTxHash(sentHash);
+                    }
+                    try {
+                        window.localStorage.setItem('lastSchemeUuid', schemeId);
+                        window.localStorage.setItem('lastDonationTxHash', txHashToStore);
+                    } catch {
+                    }
+                }
                 setSuccess(true);
                 setTimeout(() => {
                     navigate('/donor'); // Navigate back to donor dashboard
@@ -134,12 +291,21 @@ const StripePayment = () => {
                         <label>Amount (₹)</label>
                         <input 
                             type="number" 
-                            value={amount} 
-                            onChange={(e) => setAmount(e.target.value)} 
+                            value={amountInr} 
+                            onChange={(e) => setAmountInr(e.target.value)} 
                             min="1" 
+                            step="1"
                             required 
-                            placeholder="0.00"
+                            placeholder="0"
                         />
+                        <div style={{ marginTop: '8px', color: '#94a3b8', fontSize: '13px' }}>
+                            Conversion: ₹100000 → 0.01 POL
+                            {getOnChainPolForInr() && (
+                                <div style={{ marginTop: '4px' }}>
+                                    Your on-chain deposit: {getOnChainPolForInr()} POL
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {paymentMethod === 'card' ? (
@@ -191,9 +357,24 @@ const StripePayment = () => {
                     )}
 
                     <button type="submit" className="stripe-pay-btn" disabled={loading}>
-                        {loading ? 'Processing...' : `Pay ₹${amount || '0'} via ${paymentMethod === 'card' ? 'Card' : 'UPI'}`}
+                        {loading ? 'Processing...' : `Pay ₹${amountInr || '0'} via ${paymentMethod === 'card' ? 'Card' : 'UPI'}`}
                     </button>
                 </form>
+
+                {blockchainStatusError && (
+                    <div className="stripe-error">{blockchainStatusError}</div>
+                )}
+
+                {blockchainEnabled && (
+                    <div style={{ marginTop: '16px', color: '#e2e8f0', fontSize: '13px' }}>
+                        Blockchain deposit will be requested via MetaMask after payment.
+                        {blockchainTxHash && (
+                            <div style={{ marginTop: '8px', wordBreak: 'break-all' }}>
+                                On-chain Tx: {blockchainTxHash}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
