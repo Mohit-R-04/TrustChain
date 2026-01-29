@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import './DonationForm.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 const DonationForm = ({ onClose }) => {
-    const { getToken } = useAuth();
     const navigate = useNavigate();
     const [schemes, setSchemes] = useState([]);
     const [selectedSchemeId, setSelectedSchemeId] = useState('');
@@ -18,11 +16,8 @@ const DonationForm = ({ onClose }) => {
 
     const fetchSchemes = async () => {
         try {
-            const token = await getToken();
             const response = await fetch(`${API_URL}/api/scheme`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                method: 'GET'
             });
             if (response.ok) {
                 const data = await response.json();

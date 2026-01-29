@@ -34,8 +34,8 @@ public class DonationService {
     @Autowired
     private PaymentService paymentService;
 
-    public Map<String, Object> getDonorStats(String donorName) {
-        List<Donation> donations = donationRepository.findByDonor_Name(donorName);
+    public Map<String, Object> getDonorStats(String donorAuthId) {
+        List<Donation> donations = donationRepository.findByDonor_UserId(donorAuthId);
         double totalDonations = donations.stream().mapToDouble(Donation::getAmount).sum();
         long activeProjects = donations.stream().map(Donation::getScheme).distinct().count();
         // Assuming verified if transactionRef is present (which is always true for now)

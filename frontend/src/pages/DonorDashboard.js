@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import DashboardHeader from '../components/DashboardHeader';
 import DonationForm from '../components/DonationForm';
+import BlockchainPanel from '../components/BlockchainPanel';
 import './DashboardPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
@@ -50,7 +51,7 @@ const DonorDashboard = () => {
             }
 
             // Fetch Schemes (for Projects view)
-            const schemesRes = await fetch(`${API_URL}/api/scheme`, { headers });
+            const schemesRes = await fetch(`${API_URL}/api/scheme`);
             if (schemesRes.ok) {
                 const data = await schemesRes.json();
                 setSchemes(data);
@@ -120,6 +121,8 @@ const DonorDashboard = () => {
                         </button>
                     </div>
                 </div>
+
+                <BlockchainPanel />
             </div>
 
             {/* Donation Modal */}

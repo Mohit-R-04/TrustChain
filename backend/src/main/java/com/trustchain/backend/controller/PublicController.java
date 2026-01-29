@@ -1,6 +1,8 @@
 package com.trustchain.backend.controller;
 
 import com.trustchain.backend.config.BlockchainProperties;
+import com.trustchain.backend.model.BlockchainEvent;
+import com.trustchain.backend.repository.BlockchainEventRepository;
 import com.trustchain.backend.service.blockchain.DemoEscrowLedgerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +16,7 @@ import org.web3j.protocol.core.DefaultBlockParameterName;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -29,6 +32,9 @@ public class PublicController {
 
     @Autowired(required = false)
     private DemoEscrowLedgerService demoLedger;
+
+    @Autowired(required = false)
+    private BlockchainEventRepository eventRepository;
 
     @GetMapping("/ping")
     public Map<String, Object> ping() {
@@ -67,6 +73,14 @@ public class PublicController {
                 "balanceWei", balanceWei.toString(),
                 "balancePol", new BigDecimal(balanceWei).movePointLeft(18).toPlainString()
         );
+    }
+
+    @GetMapping("/blockchain/events/recent")
+    public List<BlockchainEvent> recentEvents() {
+        if (eventRepository == null) {
+            return List.of();
+        }
+        return eventRepository.findTop50ByOrderByCreatedAtDesc();
     }
 
     @PostMapping("/blockchain/demo/deposit")

@@ -41,6 +41,9 @@ public class SecurityConfig {
 
                                 // Authorization rules
                                 .authorizeHttpRequests(auth -> auth
+                                                // Allow CORS preflight requests
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                                                 // Public endpoints - no authentication required
                                                 .requestMatchers("/api/public/**").permitAll()
                                                 .requestMatchers("/api/hello").permitAll()

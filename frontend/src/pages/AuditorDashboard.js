@@ -1,6 +1,7 @@
 import React from 'react';
 import { useUser } from '@clerk/clerk-react';
 import DashboardHeader from '../components/DashboardHeader';
+import BlockchainPanel from '../components/BlockchainPanel';
 import './DashboardPage.css';
 
 const AuditorDashboard = () => {
@@ -45,6 +46,8 @@ const AuditorDashboard = () => {
                         <button className="action-btn secondary">Generate Report</button>
                     </div>
                 </div>
+
+                <BlockchainPanel />
             </div>
         </div>
     );

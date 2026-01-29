@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardHeader from '../components/DashboardHeader';
+import BlockchainPanel from '../components/BlockchainPanel';
 import './DashboardPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
@@ -263,6 +264,8 @@ const VendorDashboard = () => {
                         </button>
                     </div>
                 </div>
+
+                <BlockchainPanel />
             </div>
 
             {/* Modals */}

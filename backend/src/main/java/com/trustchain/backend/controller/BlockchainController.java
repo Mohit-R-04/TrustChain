@@ -153,7 +153,7 @@ public class BlockchainController {
 
     @GetMapping("/events/recent")
     public ResponseEntity<List<BlockchainEvent>> recentEvents() {
-        return ResponseEntity.ok(eventRepository.findTop50ByOrderByBlockNumberDesc());
+        return ResponseEntity.ok(eventRepository.findTop50ByOrderByCreatedAtDesc());
     }
 
     @RequireRole(UserRole.NGO)
