@@ -57,14 +57,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 token = authHeader.substring(7);
             }
 
-                // Validate token with Clerk
-                if (jwtTokenValidator.validateToken(token)) {
-                    String userId = jwtTokenValidator.getUserIdFromToken(token);
-                    String email = jwtTokenValidator.getEmailFromToken(token);
-                    String role = resolveRoleFromDatabase(userId, email);
-                    if (role == null || role.isBlank()) {
-                        role = jwtTokenValidator.getRoleFromToken(token);
-                    }
             boolean tokenValid = token != null && !token.isBlank() && jwtTokenValidator.validateToken(token);
             String tokenParam = null;
 
@@ -87,7 +79,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (tokenValid) {
                 String userId = jwtTokenValidator.getUserIdFromToken(token);
-                String role = jwtTokenValidator.getRoleFromToken(token);
+                String email = jwtTokenValidator.getEmailFromToken(token);
+                String role = resolveRoleFromDatabase(userId, email);
+
+                if (role == null || role.isBlank()) {
+                    role = jwtTokenValidator.getRoleFromToken(token);
+                }
 
                 SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
