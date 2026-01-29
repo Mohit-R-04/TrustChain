@@ -21,6 +21,9 @@ public class Auditor {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     // Constructors
     public Auditor() {
     }
@@ -56,5 +59,13 @@ public class Auditor {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 }

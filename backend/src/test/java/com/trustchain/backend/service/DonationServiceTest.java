@@ -9,6 +9,7 @@ import com.trustchain.backend.repository.DonationRepository;
 import com.trustchain.backend.repository.DonorRepository;
 import com.trustchain.backend.repository.SchemeRepository;
 import com.trustchain.backend.service.blockchain.DemoEscrowLedgerService;
+import com.trustchain.backend.service.blockchain.BlockchainAddressUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -67,10 +68,9 @@ public class DonationServiceTest {
         service.processDonation(request, "user_123");
 
         BigInteger expectedWei = new BigInteger("10000000000000000");
-        verify(demoLedger, times(1)).recordDeposit(eq(schemeUuid), any(BigInteger.class), eq("0x0000000000000000000000000000000000000000"), eq(expectedWei));
+        verify(demoLedger, times(1)).recordDeposit(eq(schemeUuid), any(BigInteger.class), eq(BlockchainAddressUtil.userIdToDemoAddress("user_123")), eq(expectedWei));
 
         verify(donationRepository, times(1)).save(any(Donation.class));
         verify(paymentService, times(1)).processPayment(eq(100000.0), eq("INR"), eq("tok_visa"));
     }
 }
-

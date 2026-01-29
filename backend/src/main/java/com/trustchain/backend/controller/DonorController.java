@@ -4,9 +4,13 @@ import com.trustchain.backend.annotation.RequireRole;
 import com.trustchain.backend.dto.DonationRequest;
 import com.trustchain.backend.model.Donation;
 import com.trustchain.backend.model.Donor;
+import com.trustchain.backend.model.BlockchainEvent;
 import com.trustchain.backend.model.UserRole;
+import com.trustchain.backend.repository.BlockchainEventRepository;
 import com.trustchain.backend.service.DonationService;
 import com.trustchain.backend.service.DonorService;
+import com.trustchain.backend.service.blockchain.BlockchainAddressUtil;
+import com.trustchain.backend.config.BlockchainProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,6 +30,12 @@ public class DonorController {
     
     @Autowired
     private DonationService donationService;
+
+    @Autowired(required = false)
+    private BlockchainProperties blockchainProperties;
+
+    @Autowired(required = false)
+    private BlockchainEventRepository blockchainEventRepository;
 
     @GetMapping("/dashboard")
     @RequireRole(UserRole.DONOR)
@@ -73,6 +83,25 @@ public class DonorController {
         response.put("userId", authentication.getName());
         response.put("transactions", new Object[] {});
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/blockchain/events")
+    @RequireRole(UserRole.DONOR)
+    public ResponseEntity<?> getMyBlockchainEvents(
+            @RequestParam(name = "fromAddress", required = false) String fromAddress,
+            Authentication authentication) {
+        if (blockchainEventRepository == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        boolean demoMode = blockchainProperties != null && blockchainProperties.isDemoMode();
+        String addr = (fromAddress != null && !fromAddress.isBlank())
+                ? fromAddress
+                : (demoMode ? BlockchainAddressUtil.userIdToDemoAddress(authentication.getName()) : null);
+        if (addr == null || addr.isBlank()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<BlockchainEvent> events = blockchainEventRepository.findTop50ByFromAddressOrderByCreatedAtDesc(addr);
+        return ResponseEntity.ok(events);
     }
 
     // CRUD Endpoints

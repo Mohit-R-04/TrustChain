@@ -23,6 +23,9 @@ public class Government {
     @Column(name = "govt_name")
     private String govtName;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @OneToMany(mappedBy = "government", cascade = CascadeType.ALL)
     private List<Scheme> schemes = new ArrayList<>();
 
@@ -65,6 +68,14 @@ public class Government {
 
     public void setGovtName(String govtName) {
         this.govtName = govtName;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     public List<Scheme> getSchemes() {

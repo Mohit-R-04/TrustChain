@@ -40,6 +40,15 @@ public class CommunityNeed {
     @Column(name = "downvotes")
     private Integer downvotes;
 
+    @Column(name = "implemented_scheme_id")
+    private UUID implementedSchemeId;
+
+    @Column(name = "implemented_at")
+    private LocalDateTime implementedAt;
+
+    @Column(name = "implemented_by_user_id")
+    private String implementedByUserId;
+
     public CommunityNeed() {
     }
 
@@ -121,5 +130,29 @@ public class CommunityNeed {
 
     public void setDownvotes(Integer downvotes) {
         this.downvotes = downvotes;
+    }
+
+    public UUID getImplementedSchemeId() {
+        return implementedSchemeId;
+    }
+
+    public void setImplementedSchemeId(UUID implementedSchemeId) {
+        this.implementedSchemeId = implementedSchemeId;
+    }
+
+    public LocalDateTime getImplementedAt() {
+        return implementedAt;
+    }
+
+    public void setImplementedAt(LocalDateTime implementedAt) {
+        this.implementedAt = implementedAt;
+    }
+
+    public String getImplementedByUserId() {
+        return implementedByUserId;
+    }
+
+    public void setImplementedByUserId(String implementedByUserId) {
+        this.implementedByUserId = implementedByUserId;
     }
 }

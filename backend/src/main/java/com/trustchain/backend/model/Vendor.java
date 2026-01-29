@@ -21,6 +21,9 @@ public class Vendor {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     @Column(name = "gstin")
     private String gstin;
 
@@ -65,6 +68,14 @@ public class Vendor {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     public String getGstin() {

@@ -2,7 +2,10 @@ package com.trustchain.backend.controller;
 
 import com.trustchain.backend.annotation.RequireRole;
 import com.trustchain.backend.model.Government;
+import com.trustchain.backend.model.Scheme;
 import com.trustchain.backend.model.UserRole;
+import com.trustchain.backend.repository.GovernmentRepository;
+import com.trustchain.backend.service.CommunityNeedService;
 import com.trustchain.backend.service.GovernmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +23,12 @@ public class GovernmentController {
 
     @Autowired
     private GovernmentService governmentService;
+
+    @Autowired
+    private GovernmentRepository governmentRepository;
+
+    @Autowired
+    private CommunityNeedService communityNeedService;
 
     @GetMapping("/dashboard")
     @RequireRole(UserRole.GOVERNMENT)
@@ -45,6 +54,21 @@ public class GovernmentController {
         response.put("createdBy", authentication.getName());
         response.put("status", "active");
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/community-needs/{needId}/implement")
+    @RequireRole(UserRole.GOVERNMENT)
+    public ResponseEntity<?> implementCommunityNeed(@PathVariable UUID needId, Authentication authentication) {
+        String userId = authentication.getName();
+        Government government = governmentRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    Government g = new Government();
+                    g.setUserId(userId);
+                    g.setGovtName("Government " + (userId.length() > 5 ? userId.substring(0, 5) : userId));
+                    return governmentRepository.save(g);
+                });
+        Scheme scheme = communityNeedService.implementNeed(needId, government, userId);
+        return ResponseEntity.ok(scheme);
     }
 
     @GetMapping("/reports")

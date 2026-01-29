@@ -105,6 +105,12 @@ public class AuthController {
                         .body(Map.of("error", "Email is required"));
             }
 
+            // Phone number is optional (TOTP can be used instead of SMS)
+            String phoneNumber = request.getPhoneNumber();
+            if (phoneNumber != null) {
+                phoneNumber = phoneNumber.trim().isEmpty() ? null : phoneNumber.trim();
+            }
+
             // Check if email already exists in ANY role table
             String existingRoleForEmail = null;
 
@@ -152,6 +158,7 @@ public class AuthController {
                     donor.setUserId(userId);
                     donor.setEmail(email);
                     donor.setName(effectiveName);
+                    donor.setPhoneNumber(phoneNumber);
                     donorRepository.save(donor);
                     break;
                 }
@@ -160,6 +167,7 @@ public class AuthController {
                     government.setUserId(userId);
                     government.setEmail(email);
                     government.setGovtName(effectiveName);
+                    government.setPhoneNumber(phoneNumber);
                     governmentRepository.save(government);
                     break;
                 }
@@ -168,6 +176,7 @@ public class AuthController {
                     ngo.setUserId(userId);
                     ngo.setEmail(email);
                     ngo.setName(effectiveName);
+                    ngo.setPhoneNumber(phoneNumber);
                     ngoRepository.save(ngo);
                     break;
                 }
@@ -176,6 +185,7 @@ public class AuthController {
                     vendor.setUserId(userId);
                     vendor.setEmail(email);
                     vendor.setName(effectiveName);
+                    vendor.setPhoneNumber(phoneNumber);
                     vendorRepository.save(vendor);
                     break;
                 }
@@ -184,6 +194,7 @@ public class AuthController {
                     auditor.setUserId(userId);
                     auditor.setEmail(email);
                     auditor.setName(effectiveName);
+                    auditor.setPhoneNumber(phoneNumber);
                     auditorRepository.save(auditor);
                     break;
                 }
@@ -207,6 +218,103 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to assign role: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/sync-phone")
+    public ResponseEntity<?> syncPhone(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        try {
+            String authHeader = httpRequest.getHeader("Authorization");
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Missing or invalid authorization token"));
+            }
+
+            String token = authHeader.substring(7);
+            if (!jwtTokenValidator.validateToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid token"));
+            }
+
+            String userId = jwtTokenValidator.getUserIdFromToken(token);
+            String email = jwtTokenValidator.getEmailFromToken(token);
+            String phoneNumber = request.get("phoneNumber");
+
+            // Phone number is optional (TOTP can be used instead of SMS)
+            if (phoneNumber != null) {
+                phoneNumber = phoneNumber.trim().isEmpty() ? null : phoneNumber.trim();
+            }
+
+            if (userId != null && !userId.isBlank()) {
+                Donor donor = donorRepository.findByUserId(userId).orElse(null);
+                if (donor != null) {
+                    donor.setPhoneNumber(phoneNumber);
+                    donorRepository.save(donor);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "donor"));
+                }
+                Government government = governmentRepository.findByUserId(userId).orElse(null);
+                if (government != null) {
+                    government.setPhoneNumber(phoneNumber);
+                    governmentRepository.save(government);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "government"));
+                }
+                Ngo ngo = ngoRepository.findByUserId(userId).orElse(null);
+                if (ngo != null) {
+                    ngo.setPhoneNumber(phoneNumber);
+                    ngoRepository.save(ngo);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "ngo"));
+                }
+                Vendor vendor = vendorRepository.findByUserId(userId).orElse(null);
+                if (vendor != null) {
+                    vendor.setPhoneNumber(phoneNumber);
+                    vendorRepository.save(vendor);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "vendor"));
+                }
+                Auditor auditor = auditorRepository.findByUserId(userId).orElse(null);
+                if (auditor != null) {
+                    auditor.setPhoneNumber(phoneNumber);
+                    auditorRepository.save(auditor);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "auditor"));
+                }
+            }
+
+            if (email != null && !email.isBlank()) {
+                Donor donor = donorRepository.findByEmail(email).orElse(null);
+                if (donor != null) {
+                    donor.setPhoneNumber(phoneNumber);
+                    donorRepository.save(donor);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "donor"));
+                }
+                Government government = governmentRepository.findByEmail(email).orElse(null);
+                if (government != null) {
+                    government.setPhoneNumber(phoneNumber);
+                    governmentRepository.save(government);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "government"));
+                }
+                Ngo ngo = ngoRepository.findByEmail(email).orElse(null);
+                if (ngo != null) {
+                    ngo.setPhoneNumber(phoneNumber);
+                    ngoRepository.save(ngo);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "ngo"));
+                }
+                Vendor vendor = vendorRepository.findByEmail(email).orElse(null);
+                if (vendor != null) {
+                    vendor.setPhoneNumber(phoneNumber);
+                    vendorRepository.save(vendor);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "vendor"));
+                }
+                Auditor auditor = auditorRepository.findByEmail(email).orElse(null);
+                if (auditor != null) {
+                    auditor.setPhoneNumber(phoneNumber);
+                    auditorRepository.save(auditor);
+                    return ResponseEntity.ok(Map.of("updated", true, "role", "auditor"));
+                }
+            }
+
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "User role record not found"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to sync phone: " + e.getMessage()));
         }
     }
 

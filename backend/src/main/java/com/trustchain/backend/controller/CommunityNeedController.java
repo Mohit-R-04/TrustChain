@@ -1,10 +1,13 @@
 package com.trustchain.backend.controller;
 
+import com.trustchain.backend.dto.CreateCommunityNeedRequest;
 import com.trustchain.backend.model.CommunityNeed;
 import com.trustchain.backend.service.CommunityNeedService;
+import com.trustchain.backend.service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -17,13 +20,28 @@ public class CommunityNeedController {
     @Autowired
     private CommunityNeedService communityNeedService;
 
+    @Autowired
+    private OtpService otpService;
+
     @GetMapping
     public ResponseEntity<List<CommunityNeed>> getAllNeeds() {
         return ResponseEntity.ok(communityNeedService.listNeeds());
     }
 
     @PostMapping
-    public ResponseEntity<CommunityNeed> createNeed(@RequestBody CommunityNeed communityNeed) {
+    public ResponseEntity<?> createNeed(@Valid @RequestBody CreateCommunityNeedRequest request) {
+        boolean ok = otpService.consumeVerificationToken(request.getEmail(), request.getOtpVerificationToken());
+        if (!ok) {
+            return ResponseEntity.status(401).body("Email OTP verification is required");
+        }
+
+        CommunityNeed communityNeed = new CommunityNeed();
+        communityNeed.setTitle(request.getTitle());
+        communityNeed.setCategory(request.getCategory());
+        communityNeed.setLocation(request.getLocation());
+        communityNeed.setDescription(request.getDescription());
+        communityNeed.setEmail(request.getEmail());
+
         return ResponseEntity.ok(communityNeedService.createNeed(communityNeed));
     }
 

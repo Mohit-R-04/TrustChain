@@ -11,6 +11,7 @@ import com.trustchain.backend.repository.DonorRepository;
 import com.trustchain.backend.repository.GovernmentRepository;
 import com.trustchain.backend.repository.SchemeRepository;
 import com.trustchain.backend.service.blockchain.BlockchainIdUtil;
+import com.trustchain.backend.service.blockchain.BlockchainAddressUtil;
 import com.trustchain.backend.service.blockchain.DemoEscrowLedgerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -113,7 +114,7 @@ public class DonationService {
         donation.setStatus("COMPLETED");
         Donation saved = donationRepository.save(donation);
 
-        recordDemoDepositIfEnabled(scheme, request.getAmount());
+        recordDemoDepositIfEnabled(scheme, request.getAmount(), donorAuthId);
 
         return saved;
     }
@@ -145,7 +146,7 @@ public class DonationService {
         donation.setStatus("COMPLETED");
         Donation saved = donationRepository.save(donation);
 
-        recordDemoDepositIfEnabled(scheme, request.getAmount());
+        recordDemoDepositIfEnabled(scheme, request.getAmount(), govtAuthId);
 
         return saved;
     }
@@ -167,7 +168,7 @@ public class DonationService {
         return scheme;
     }
 
-    private void recordDemoDepositIfEnabled(Scheme scheme, Double amountInr) {
+    private void recordDemoDepositIfEnabled(Scheme scheme, Double amountInr, String userId) {
         if (blockchainProperties == null || !blockchainProperties.isEnabled() || !blockchainProperties.isDemoMode() || demoLedger == null) {
             return;
         }
@@ -177,7 +178,7 @@ public class DonationService {
         }
         BigInteger amountWei = inr.multiply(new BigDecimal("100000000000")).toBigInteger();
         BigInteger schemeId = BlockchainIdUtil.uuidToUint256(scheme.getSchemeId());
-        demoLedger.recordDeposit(scheme.getSchemeId(), schemeId, "0x0000000000000000000000000000000000000000", amountWei);
+        demoLedger.recordDeposit(scheme.getSchemeId(), schemeId, BlockchainAddressUtil.userIdToDemoAddress(userId), amountWei);
     }
 
     public Donation createDonation(Donation donation) {

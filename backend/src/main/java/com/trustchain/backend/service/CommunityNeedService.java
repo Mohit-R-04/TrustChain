@@ -2,12 +2,16 @@ package com.trustchain.backend.service;
 
 import com.trustchain.backend.model.CommunityNeed;
 import com.trustchain.backend.model.CommunityNeedVote;
+import com.trustchain.backend.model.Government;
+import com.trustchain.backend.model.Scheme;
 import com.trustchain.backend.repository.CommunityNeedRepository;
 import com.trustchain.backend.repository.CommunityNeedVoteRepository;
+import com.trustchain.backend.repository.SchemeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +24,9 @@ public class CommunityNeedService {
 
     @Autowired
     private CommunityNeedVoteRepository communityNeedVoteRepository;
+
+    @Autowired
+    private SchemeRepository schemeRepository;
 
     public List<CommunityNeed> listNeeds() {
         return communityNeedRepository.findAllByOrderByCreatedAtDesc();
@@ -72,6 +79,45 @@ public class CommunityNeedService {
         return communityNeedRepository.save(need);
     }
 
+    @Transactional
+    public Scheme implementNeed(UUID needId, Government government, String implementedByUserId) {
+        if (government == null) {
+            throw new IllegalArgumentException("Government is required");
+        }
+        CommunityNeed need = communityNeedRepository.findById(needId)
+                .orElseThrow(() -> new IllegalArgumentException("Need not found"));
+
+        if (need.getImplementedSchemeId() != null) {
+            return schemeRepository.findById(need.getImplementedSchemeId())
+                    .orElseThrow(() -> new IllegalStateException("Implemented scheme not found"));
+        }
+
+        Scheme scheme = new Scheme();
+        scheme.setSchemeName(need.getTitle());
+        scheme.setCategory(need.getCategory());
+        scheme.setRegion(need.getLocation());
+        scheme.setDescription(need.getDescription());
+        scheme.setBudget(0d);
+        scheme.setExpectedBeneficiaries(0);
+        scheme.setMilestoneCount(1);
+        scheme.setStartDate(LocalDate.now());
+        scheme.setEndDate(LocalDate.now().plusMonths(6));
+        scheme.setIsFinished(false);
+        if (scheme.getCreatedAt() == null) {
+            scheme.setCreatedAt(LocalDateTime.now());
+        }
+        scheme.setGovernment(government);
+        scheme = schemeRepository.save(scheme);
+
+        need.setImplementedSchemeId(scheme.getSchemeId());
+        need.setImplementedAt(LocalDateTime.now());
+        need.setImplementedByUserId(implementedByUserId);
+        need.setStatus("implemented");
+        communityNeedRepository.save(need);
+
+        return scheme;
+    }
+
     private static void applyDelta(CommunityNeed need, int voteValue, int delta) {
         if (voteValue == 1) {
             need.setUpvotes(Math.max(0, (need.getUpvotes() != null ? need.getUpvotes() : 0) + delta));
@@ -85,4 +131,3 @@ public class CommunityNeedService {
         return voterRaw.trim().toLowerCase();
     }
 }
-

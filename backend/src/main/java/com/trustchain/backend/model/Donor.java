@@ -21,6 +21,9 @@ public class Donor {
     @Column(name = "name")
     private String name;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
     // Constructors
     public Donor() {
     }
@@ -56,5 +59,13 @@ public class Donor {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 }
