@@ -16,26 +16,31 @@ public class AuditorService {
     private AuditorRepository auditorRepository;
 
     public List<Auditor> getAllAuditors() {
-        // TODO: Implement method
-        return null;
+        return auditorRepository.findAll();
+    }
+
+    public Auditor getAuditorByUserId(String userId) {
+        return auditorRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Auditor not found"));
     }
 
     public Optional<Auditor> getAuditorById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return auditorRepository.findById(id);
     }
 
     public Auditor createAuditor(Auditor auditor) {
-        // TODO: Implement method
-        return null;
+        return auditorRepository.save(auditor);
     }
 
     public Auditor updateAuditor(UUID id, Auditor auditor) {
-        // TODO: Implement method
+        if (auditorRepository.existsById(id)) {
+            auditor.setAuditorId(id);
+            return auditorRepository.save(auditor);
+        }
         return null;
     }
 
     public void deleteAuditor(UUID id) {
-        // TODO: Implement method
+        auditorRepository.deleteById(id);
     }
 }

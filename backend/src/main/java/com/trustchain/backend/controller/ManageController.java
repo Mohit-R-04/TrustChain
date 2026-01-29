@@ -18,31 +18,33 @@ public class ManageController {
 
     @GetMapping
     public ResponseEntity<List<Manage>> getAllManages() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(manageService.getAllManages());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Manage> getManageById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return manageService.getManageById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<Manage> createManage(@RequestBody Manage manage) {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(manageService.createManage(manage));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Manage> updateManage(@PathVariable UUID id, @RequestBody Manage manage) {
-        // TODO: Implement endpoint
-        return null;
+        Manage updated = manageService.updateManage(id, manage);
+        if (updated != null) {
+            return ResponseEntity.ok(updated);
+        }
+        return ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteManage(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        manageService.deleteManage(id);
+        return ResponseEntity.ok().build();
     }
 }

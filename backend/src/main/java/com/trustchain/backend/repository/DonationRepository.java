@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface DonationRepository extends JpaRepository<Donation, UUID> {
     List<Donation> findByDonor_Name(String name);
+    List<Donation> findByDonor_UserId(String userId);
 }

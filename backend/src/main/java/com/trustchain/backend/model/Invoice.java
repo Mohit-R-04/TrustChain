@@ -24,6 +24,9 @@ public class Invoice {
     @Column(name = "invoice_ipfs_hash")
     private String invoiceIpfsHash;
 
+    @Column(name = "amount")
+    private Double amount;
+
     @Column(name = "status")
     private String status;
 
@@ -34,10 +37,11 @@ public class Invoice {
     public Invoice() {
     }
 
-    public Invoice(Vendor vendor, Manage manage, String invoiceIpfsHash, String status, LocalDateTime createdAt) {
+    public Invoice(Vendor vendor, Manage manage, String invoiceIpfsHash, Double amount, String status, LocalDateTime createdAt) {
         this.vendor = vendor;
         this.manage = manage;
         this.invoiceIpfsHash = invoiceIpfsHash;
+        this.amount = amount;
         this.status = status;
         this.createdAt = createdAt;
     }
@@ -73,6 +77,14 @@ public class Invoice {
 
     public void setInvoiceIpfsHash(String invoiceIpfsHash) {
         this.invoiceIpfsHash = invoiceIpfsHash;
+    }
+
+    public Double getAmount() {
+        return amount;
+    }
+
+    public void setAmount(Double amount) {
+        this.amount = amount;
     }
 
     public String getStatus() {

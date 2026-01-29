@@ -16,26 +16,30 @@ public class InvoiceService {
     private InvoiceRepository invoiceRepository;
 
     public List<Invoice> getAllInvoices() {
-        // TODO: Implement method
-        return null;
+        return invoiceRepository.findAll();
+    }
+
+    public List<Invoice> getInvoicesByVendorUserId(String userId) {
+        return invoiceRepository.findByVendor_UserId(userId);
     }
 
     public Optional<Invoice> getInvoiceById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return invoiceRepository.findById(id);
     }
 
     public Invoice createInvoice(Invoice invoice) {
-        // TODO: Implement method
-        return null;
+        return invoiceRepository.save(invoice);
     }
 
     public Invoice updateInvoice(UUID id, Invoice invoice) {
-        // TODO: Implement method
+        if (invoiceRepository.existsById(id)) {
+            invoice.setInvoiceId(id);
+            return invoiceRepository.save(invoice);
+        }
         return null;
     }
 
     public void deleteInvoice(UUID id) {
-        // TODO: Implement method
+        invoiceRepository.deleteById(id);
     }
 }

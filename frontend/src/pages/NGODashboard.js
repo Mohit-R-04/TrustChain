@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useAuth, useUser } from '@clerk/clerk-react';
+import React, { useState, useEffect } from 'react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import DashboardHeader from '../components/DashboardHeader';
+import {useNavigate} from 'react-router-dom';
 import './DashboardPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
@@ -8,93 +9,111 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const NGODashboard = () => {
     const { user } = useUser();
     const { getToken } = useAuth();
-    const [schemeUuid, setSchemeUuid] = useState('');
-    const [milestoneId, setMilestoneId] = useState('');
-    const [amountEth, setAmountEth] = useState('');
-    const [vendorAddress, setVendorAddress] = useState('');
-    const [ipfsHash, setIpfsHash] = useState('');
-    const [toAddress, setToAddress] = useState('');
-    const [actionError, setActionError] = useState(null);
-    const [actionResult, setActionResult] = useState(null);
-    const [recentEvents, setRecentEvents] = useState([]);
+    const navigate = useNavigate();
+    
+    const [ngoDetails, setNgoDetails] = useState(null);
+    const [schemes, setSchemes] = useState([]);
+    const [allSchemes, setAllSchemes] = useState([]);
+    
+    const [showCreateProject, setShowCreateProject] = useState(false);
+    const [showUploadDocs, setShowUploadDocs] = useState(false);
+    const [showBeneficiaries, setShowBeneficiaries] = useState(false);
 
-    const INR_PER_POL = window.BigInt('10000000');
-    const WEI_PER_POL = window.BigInt('1000000000000000000');
+    const [projectForm, setProjectForm] = useState({
+        schemeId: ''
+    });
 
-    const formatInrBigInt = (inr) => {
-        try {
-            const s0 = window.BigInt(inr).toString();
-            const s = s0.startsWith('-') ? s0.slice(1) : s0;
-            if (s.length <= 3) return (s0.startsWith('-') ? '-' : '') + s;
-            const last3 = s.slice(-3);
-            let rest = s.slice(0, -3);
-            const parts = [];
-            while (rest.length > 2) {
-                parts.unshift(rest.slice(-2));
-                rest = rest.slice(0, -2);
-            }
-            if (rest) parts.unshift(rest);
-            const out = `${parts.join(',')},${last3}`;
-            return s0.startsWith('-') ? `-${out}` : out;
-        } catch {
-            return '0';
-        }
-    };
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [schemesError, setSchemesError] = useState(null);
 
-    const weiToInr = (weiStr) => {
-        try {
-            if (!weiStr) return null;
-            const wei = window.BigInt(weiStr);
-            return (wei * INR_PER_POL) / WEI_PER_POL;
-        } catch {
-            return null;
-        }
-    };
+    const [stats, setStats] = useState({
+        activeProjects: 0,
+        beneficiaries: 0,
+        fundsReceived: 0
+    });
 
     useEffect(() => {
-        fetchRecentEvents();
-    }, []);
+        if (user) {
+            fetchDashboardData();
+        }
+    }, [user]);
 
-    const fetchRecentEvents = async () => {
+    // Client-side filtering when category changes
+    useEffect(() => {
+        if (selectedCategory === 'All') {
+            setSchemes(allSchemes);
+        } else {
+            setSchemes(allSchemes.filter(s => s.category === selectedCategory));
+        }
+    }, [selectedCategory, allSchemes]);
+
+    const fetchDashboardData = async () => {
         try {
             const token = await getToken();
-            const response = await fetch(`${API_URL}/api/blockchain/events/recent`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            // Fetch NGO Details
+            const ngoRes = await fetch(`${API_URL}/api/ngo/user/${user.id}`, { headers });
+            if (ngoRes.ok) {
+                const data = await ngoRes.json();
+                setNgoDetails(data);
+            }
+
+            // Fetch Schemes (for project creation)
+            const schemesRes = await fetch(`${API_URL}/api/scheme`, { headers });
+            if (schemesRes.ok) {
+                const data = await schemesRes.json();
+                console.log("Fetched schemes:", data); // Debug log
+                setSchemes(data);
+                setAllSchemes(data);
+            } else {
+                console.error("Failed to fetch schemes:", schemesRes.status);
+                setSchemesError(`Failed to fetch schemes (Status: ${schemesRes.status})`);
+            }
+
+            // Mock Stats (can be real if endpoints exist)
+            setStats({
+                activeProjects: 2,
+                beneficiaries: 150,
+                fundsReceived: 500000
             });
-            if (response.ok) {
-                const data = await response.json();
-                setRecentEvents(Array.isArray(data) ? data : []);
-            }
-        } catch (e) {
-            console.error('Error fetching blockchain events:', e);
+
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
         }
     };
 
-    const post = async (path) => {
-        setActionError(null);
-        setActionResult(null);
-        const token = await getToken();
-        const response = await fetch(`${API_URL}${path}`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            throw new Error(data?.message || 'Blockchain request failed');
+    const handleCreateProject = async (e) => {
+        e.preventDefault();
+        if (!ngoDetails) {
+            alert("NGO details not found. Please contact support.");
+            return;
         }
-        setActionResult(data);
-        await fetchRecentEvents();
-    };
-
-    const runAction = async (path) => {
         try {
-            await post(path);
-        } catch (e) {
-            setActionError(e?.message || 'Blockchain request failed');
+            const token = await getToken();
+            const response = await fetch(`${API_URL}/api/manage`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ngo: { ngoId: ngoDetails.ngoId },
+                    scheme: { schemeId: projectForm.schemeId }
+                })
+            });
+
+            if (response.ok) {
+                alert('Project created successfully!');
+                setShowCreateProject(false);
+                setProjectForm({ schemeId: '' });
+                fetchDashboardData();
+            } else {
+                alert('Failed to create project');
+            }
+        } catch (error) {
+            console.error('Error creating project:', error);
+            alert('Error creating project');
         }
     };
 
@@ -108,7 +127,7 @@ const NGODashboard = () => {
                         <div className="stat-icon">📁</div>
                         <div className="stat-content">
                             <h3>Active Projects</h3>
-                            <p className="stat-value">0</p>
+                            <p className="stat-value">{stats.activeProjects}</p>
                         </div>
                     </div>
 
@@ -116,7 +135,7 @@ const NGODashboard = () => {
                         <div className="stat-icon">👥</div>
                         <div className="stat-content">
                             <h3>Beneficiaries</h3>
-                            <p className="stat-value">0</p>
+                            <p className="stat-value">{stats.beneficiaries}</p>
                         </div>
                     </div>
 
@@ -124,7 +143,7 @@ const NGODashboard = () => {
                         <div className="stat-icon">💰</div>
                         <div className="stat-content">
                             <h3>Funds Received</h3>
-                            <p className="stat-value">₹0</p>
+                            <p className="stat-value">₹{stats.fundsReceived.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
@@ -132,101 +151,192 @@ const NGODashboard = () => {
                 <div className="action-section">
                     <h2>Quick Actions</h2>
                     <div className="action-buttons">
-                        <button className="action-btn primary">Create Project</button>
-                        <button className="action-btn secondary">Upload Documents</button>
-                        <button className="action-btn secondary">View Beneficiaries</button>
-                    </div>
-                </div>
-
-                <div className="action-section">
-                    <h2>Blockchain Admin</h2>
-                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', borderRadius: '16px', padding: '16px', display: 'grid', gap: '12px' }}>
-                        <input
-                            value={schemeUuid}
-                            onChange={(e) => setSchemeUuid(e.target.value)}
-                            placeholder="Scheme UUID (from app)"
-                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
-                        />
-                        <input
-                            value={milestoneId}
-                            onChange={(e) => setMilestoneId(e.target.value)}
-                            placeholder="Milestone ID (number)"
-                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
-                        />
-                        <input
-                            value={amountEth}
-                            onChange={(e) => setAmountEth(e.target.value)}
-                            placeholder="Amount (POL) for milestone"
-                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
-                        />
-                        <input
-                            value={vendorAddress}
-                            onChange={(e) => setVendorAddress(e.target.value)}
-                            placeholder="Vendor wallet (0x...)"
-                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
-                        />
-                        <input
-                            value={ipfsHash}
-                            onChange={(e) => setIpfsHash(e.target.value)}
-                            placeholder="IPFS hash (quotation/proof)"
-                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
-                        />
-                        <input
-                            value={toAddress}
-                            onChange={(e) => setToAddress(e.target.value)}
-                            placeholder="Refund to address (0x...)"
-                            style={{ padding: '12px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', background: 'rgba(2, 6, 23, 0.35)', color: '#e2e8f0' }}
-                        />
-                        <div className="action-buttons">
-                            <button className="action-btn primary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/create`)}>Create Scheme</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/lock`)}>Lock Funds</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/milestones/${milestoneId}?amountEth=${encodeURIComponent(amountEth)}`)}>Create Milestone</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/milestones/${milestoneId}/vendor?vendorAddress=${encodeURIComponent(vendorAddress)}`)}>Set Vendor</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/milestones/${milestoneId}/quotation?ipfsHash=${encodeURIComponent(ipfsHash)}`)}>Store Quotation</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/milestones/${milestoneId}/approve`)}>Approve Proof</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/milestones/${milestoneId}/reject`)}>Reject Proof</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/milestones/${milestoneId}/release`)}>Release Payment</button>
-                            <button className="action-btn secondary" onClick={() => runAction(`/api/blockchain/schemes/${schemeUuid}/milestones/${milestoneId}/refund?toAddress=${encodeURIComponent(toAddress)}`)}>Refund</button>
-                        </div>
-                        {actionError && <div style={{ color: '#ef4444' }}>{actionError}</div>}
-                        {actionResult && <div style={{ color: '#94a3b8', wordBreak: 'break-all' }}>{JSON.stringify(actionResult)}</div>}
-                    </div>
-                </div>
-
-                <div className="action-section">
-                    <h2>On-Chain Activity</h2>
-                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', borderRadius: '16px', padding: '16px' }}>
-                        {recentEvents.length === 0 ? (
-                            <div style={{ color: '#94a3b8' }}>No recent blockchain events found.</div>
-                        ) : (
-                            <div style={{ display: 'grid', gap: '10px' }}>
-                                {recentEvents.slice(0, 8).map((ev) => (
-                                    <div key={ev.eventId} style={{ display: 'grid', gap: '4px', padding: '10px', borderRadius: '12px', background: 'rgba(2, 6, 23, 0.35)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-                                            <div style={{ fontWeight: 700 }}>
-                                                {ev.eventName}
-                                                {typeof ev.transactionHash === 'string' && ev.transactionHash.startsWith('demo-') && (
-                                                    <span style={{ marginLeft: '8px', color: '#f59e0b', fontWeight: 700 }}>DEMO</span>
-                                                )}
-                                            </div>
-                                            <div style={{ color: '#94a3b8' }}>{ev.blockNumber !== null && ev.blockNumber !== undefined ? `#${ev.blockNumber}` : ''}</div>
-                                        </div>
-                                        {ev.amountWei && (
-                                            <div style={{ color: '#e2e8f0' }}>
-                                                Amount: ₹{formatInrBigInt(weiToInr(ev.amountWei) || 0)}
-                                            </div>
-                                        )}
-                                        {ev.schemeId && <div style={{ color: '#94a3b8', wordBreak: 'break-all' }}>SchemeId: {ev.schemeId}</div>}
-                                        {ev.fromAddress && <div style={{ color: '#94a3b8', wordBreak: 'break-all' }}>From: {ev.fromAddress}</div>}
-                                        {ev.ipfsHash && <div style={{ color: '#e2e8f0', wordBreak: 'break-all' }}>IPFS: {ev.ipfsHash}</div>}
-                                        {ev.transactionHash && <div style={{ color: '#94a3b8', wordBreak: 'break-all' }}>Tx: {ev.transactionHash}</div>}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <button 
+                            className="action-btn secondary"
+                            onClick={() => navigate('/ngo-kyc')}
+                        >
+                            Verify KYC
+                        </button>
+                        <button 
+                            className="action-btn primary"
+                            onClick={() => {
+                                fetchDashboardData();
+                                setShowCreateProject(true);
+                            }}
+                        >
+                            New Project
+                        </button>
+                        <button 
+                            className="action-btn secondary"
+                            onClick={() => setShowUploadDocs(true)}
+                        >
+                            Upload Documents
+                        </button>
+                        <button 
+                            className="action-btn secondary"
+                            onClick={() => setShowBeneficiaries(true)}
+                        >
+                            View Beneficiaries
+                        </button>
                     </div>
                 </div>
             </div>
+
+            {/* Create Project Modal */}
+            {showCreateProject && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ maxWidth: '800px' }}>
+                        <div className="modal-header">
+                            <h3>Create New Project</h3>
+                            <button className="close-btn" onClick={() => setShowCreateProject(false)}>×</button>
+                        </div>
+                        <form onSubmit={handleCreateProject}>
+                            <div className="form-group">
+                                <label>Filter by Category</label>
+                                <select 
+                                    value={selectedCategory} 
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    style={{ marginBottom: '15px' }}
+                                >
+                                    {['All', ...new Set(allSchemes.map(s => s.category).filter(Boolean))].map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
+                                        <tr>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Select</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Scheme Name</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Category</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Region</th>
+                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Budget</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {schemes.map(scheme => (
+                                            <tr 
+                                                key={scheme.schemeId} 
+                                                onClick={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
+                                                style={{ 
+                                                    cursor: 'pointer', 
+                                                    backgroundColor: projectForm.schemeId === scheme.schemeId ? '#eff6ff' : 'transparent',
+                                                    borderBottom: '1px solid #f1f5f9'
+                                                }}
+                                            >
+                                                <td style={{ padding: '12px' }}>
+                                                    <input 
+                                                        type="radio" 
+                                                        name="selectedScheme" 
+                                                        checked={projectForm.schemeId === scheme.schemeId}
+                                                        onChange={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
+                                                    />
+                                                </td>
+                                                <td style={{ padding: '12px' }}>{scheme.schemeName}</td>
+                                                <td style={{ padding: '12px' }}>{scheme.category || '-'}</td>
+                                                <td style={{ padding: '12px' }}>{scheme.region || '-'}</td>
+                                                <td style={{ padding: '12px' }}>₹{scheme.budget?.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                        {schemes.length === 0 && (
+                                            <tr>
+                                                <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                                                    {schemesError ? <span style={{color: 'red'}}>{schemesError}</span> : "No schemes available."}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                <button 
+                                    type="button" 
+                                    className="action-btn secondary" 
+                                    onClick={() => setShowCreateProject(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="submit-btn" 
+                                    disabled={!projectForm.schemeId}
+                                    style={{ width: 'auto', marginTop: 0 }}
+                                >
+                                    Accept Project
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Upload Documents Modal (Mock) */}
+            {showUploadDocs && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h3>Upload Documents</h3>
+                            <button className="close-btn" onClick={() => setShowUploadDocs(false)}>×</button>
+                        </div>
+                        <form onSubmit={(e) => { e.preventDefault(); alert("Document uploaded! IPFS Hash: QmHash..."); setShowUploadDocs(false); }}>
+                            <div className="form-group">
+                                <label>Document Type</label>
+                                <select>
+                                    <option>Impact Report</option>
+                                    <option>Financial Statement</option>
+                                    <option>Beneficiary List</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>File</label>
+                                <input type="file" required />
+                            </div>
+                            <button type="submit" className="submit-btn">Upload</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* View Beneficiaries Modal (Mock) */}
+            {showBeneficiaries && (
+                <div className="modal-overlay">
+                    <div className="modal-content large-modal">
+                        <div className="modal-header">
+                            <h3>Beneficiaries</h3>
+                            <button className="close-btn" onClick={() => setShowBeneficiaries(false)}>×</button>
+                        </div>
+                        <div className="table-container">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>ID</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>John Doe</td>
+                                        <td className="monospace">BEN-001</td>
+                                        <td><span className="status-badge success">Verified</span></td>
+                                        <td>2024-01-15</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Jane Smith</td>
+                                        <td className="monospace">BEN-002</td>
+                                        <td><span className="status-badge pending">Pending</span></td>
+                                        <td>2024-01-20</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

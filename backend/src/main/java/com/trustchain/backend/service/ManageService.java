@@ -16,26 +16,26 @@ public class ManageService {
     private ManageRepository manageRepository;
 
     public List<Manage> getAllManages() {
-        // TODO: Implement method
-        return null;
+        return manageRepository.findAll();
     }
 
     public Optional<Manage> getManageById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return manageRepository.findById(id);
     }
 
     public Manage createManage(Manage manage) {
-        // TODO: Implement method
-        return null;
+        return manageRepository.save(manage);
     }
 
     public Manage updateManage(UUID id, Manage manage) {
-        // TODO: Implement method
-        return null;
+        return manageRepository.findById(id).map(existingManage -> {
+            existingManage.setNgo(manage.getNgo());
+            existingManage.setScheme(manage.getScheme());
+            return manageRepository.save(existingManage);
+        }).orElse(null);
     }
 
     public void deleteManage(UUID id) {
-        // TODO: Implement method
+        manageRepository.deleteById(id);
     }
 }

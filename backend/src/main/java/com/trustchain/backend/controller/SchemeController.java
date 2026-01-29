@@ -11,13 +11,17 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/scheme")
+@CrossOrigin(origins = "*")
 public class SchemeController {
 
     @Autowired
     private SchemeService schemeService;
 
     @GetMapping
-    public ResponseEntity<List<Scheme>> getAllSchemes() {
+    public ResponseEntity<List<Scheme>> getAllSchemes(@RequestParam(required = false) String category) {
+        if (category != null && !category.isEmpty()) {
+            return ResponseEntity.ok(schemeService.getSchemesByCategory(category));
+        }
         return ResponseEntity.ok(schemeService.getAllSchemes());
     }
 

@@ -11,7 +11,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -43,26 +42,32 @@ public class SecurityConfig {
                                 // Authorization rules
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints - no authentication required
-                                                .requestMatchers(new AntPathRequestMatcher("/api/public/**")).permitAll()
-                                                .requestMatchers(new AntPathRequestMatcher("/api/hello")).permitAll()
-                                                .requestMatchers(new AntPathRequestMatcher("/api/health")).permitAll()
-                                                .requestMatchers(new AntPathRequestMatcher("/api/otp/**")).permitAll()
+                                                .requestMatchers("/api/public/**").permitAll()
+                                                .requestMatchers("/api/hello").permitAll()
+                                                .requestMatchers("/api/health").permitAll()
+                                                .requestMatchers("/api/otp/**").permitAll()
 
                                                 // Auth endpoints - require authentication but no specific role
-                                                .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).authenticated()
+                                                .requestMatchers("/api/auth/**").authenticated()
 
                                                 // Citizen endpoints - accessible to all authenticated users
-                                                .requestMatchers(new AntPathRequestMatcher("/api/citizen/**", "GET")).permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/citizen/**").permitAll()
+                                                
+                                                // Scheme endpoints - Publicly readable
+                                                .requestMatchers(HttpMethod.GET, "/api/scheme/**").permitAll()
+
+                                                // Allow NGO user details fetch for any authenticated user (fixes 403 on dashboard load)
+                                                .requestMatchers("/api/ngo/user/**").authenticated()
 
                                                 // Role-specific endpoints
-                                                .requestMatchers(new AntPathRequestMatcher("/api/donor/**")).hasRole("DONOR")
-                                                .requestMatchers(new AntPathRequestMatcher("/api/government/**")).hasRole("GOVERNMENT")
-                                                .requestMatchers(new AntPathRequestMatcher("/api/ngo/**")).hasRole("NGO")
-                                                .requestMatchers(new AntPathRequestMatcher("/api/vendor/**")).hasRole("VENDOR")
-                                                .requestMatchers(new AntPathRequestMatcher("/api/auditor/**")).hasRole("AUDITOR")
+                                                .requestMatchers("/api/donor/**").hasRole("DONOR")
+                                                .requestMatchers("/api/government/**").hasRole("GOVERNMENT")
+                                                .requestMatchers("/api/ngo/**").hasRole("NGO")
+                                                .requestMatchers("/api/vendor/**").hasRole("VENDOR")
+                                                .requestMatchers("/api/auditor/**").hasRole("AUDITOR")
 
                                                 // Admin endpoints (if needed)
-                                                .requestMatchers(new AntPathRequestMatcher("/api/admin/**")).hasRole("ADMIN")
+                                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                                                 // All other requests require authentication
                                                 .anyRequest().authenticated())

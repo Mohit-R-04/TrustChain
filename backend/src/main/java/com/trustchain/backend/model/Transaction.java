@@ -17,6 +17,10 @@ public class Transaction {
     @JoinColumn(name = "manage_id", referencedColumnName = "manage_id")
     private Manage manage;
 
+    @ManyToOne
+    @JoinColumn(name = "vendor_id", referencedColumnName = "vendor_id")
+    private Vendor vendor;
+
     @Column(name = "escrow_contract_address")
     private String escrowContractAddress;
 
@@ -33,9 +37,10 @@ public class Transaction {
     public Transaction() {
     }
 
-    public Transaction(Manage manage, String escrowContractAddress, Double totalAmount, String status,
+    public Transaction(Manage manage, Vendor vendor, String escrowContractAddress, Double totalAmount, String status,
             LocalDateTime createdAt) {
         this.manage = manage;
+        this.vendor = vendor;
         this.escrowContractAddress = escrowContractAddress;
         this.totalAmount = totalAmount;
         this.status = status;
@@ -57,6 +62,14 @@ public class Transaction {
 
     public void setManage(Manage manage) {
         this.manage = manage;
+    }
+
+    public Vendor getVendor() {
+        return vendor;
+    }
+
+    public void setVendor(Vendor vendor) {
+        this.vendor = vendor;
     }
 
     public String getEscrowContractAddress() {

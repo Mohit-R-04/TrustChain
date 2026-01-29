@@ -1,9 +1,11 @@
 package com.trustchain.backend.controller;
 
+import com.trustchain.backend.dto.DonationRequest;
 import com.trustchain.backend.model.Donation;
 import com.trustchain.backend.service.DonationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,31 +20,35 @@ public class DonationController {
 
     @GetMapping
     public ResponseEntity<List<Donation>> getAllDonations() {
-        // TODO: Implement endpoint
-        return null;
+        return ResponseEntity.ok(donationService.getAllDonations());
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Donation>> getDonationsByUserId(@PathVariable String userId) {
+        return ResponseEntity.ok(donationService.getDonationsByUserId(userId));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Donation> getDonationById(@PathVariable UUID id) {
-        // TODO: Implement endpoint
-        return null;
+        return donationService.getDonationById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<Donation> createDonation(@RequestBody Donation donation) {
-        // TODO: Implement endpoint
-        return null;
+    public ResponseEntity<Donation> createDonation(@RequestBody DonationRequest request, Authentication authentication) {
+        return ResponseEntity.ok(donationService.processDonation(request, authentication.getName()));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Donation> updateDonation(@PathVariable UUID id, @RequestBody Donation donation) {
-        // TODO: Implement endpoint
+        // Not implemented for now
         return null;
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDonation(@PathVariable UUID id) {
-        // TODO: Implement endpoint
+        // Not implemented for now
         return null;
     }
 }

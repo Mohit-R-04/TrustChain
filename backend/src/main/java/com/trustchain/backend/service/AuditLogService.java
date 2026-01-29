@@ -5,6 +5,7 @@ import com.trustchain.backend.repository.AuditLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,26 +17,29 @@ public class AuditLogService {
     private AuditLogRepository auditLogRepository;
 
     public List<AuditLog> getAllAuditLogs() {
-        // TODO: Implement method
-        return null;
+        return auditLogRepository.findAll();
     }
 
     public Optional<AuditLog> getAuditLogById(UUID id) {
-        // TODO: Implement method
-        return null;
+        return auditLogRepository.findById(id);
     }
 
     public AuditLog createAuditLog(AuditLog auditLog) {
-        // TODO: Implement method
-        return null;
+        if (auditLog.getCreatedAt() == null) {
+            auditLog.setCreatedAt(LocalDateTime.now());
+        }
+        return auditLogRepository.save(auditLog);
     }
 
     public AuditLog updateAuditLog(UUID id, AuditLog auditLog) {
-        // TODO: Implement method
-        return null;
+        return auditLogRepository.findById(id).map(existingLog -> {
+            existingLog.setRemarks(auditLog.getRemarks());
+            // Update other fields if necessary
+            return auditLogRepository.save(existingLog);
+        }).orElse(null);
     }
 
     public void deleteAuditLog(UUID id) {
-        // TODO: Implement method
+        auditLogRepository.deleteById(id);
     }
 }

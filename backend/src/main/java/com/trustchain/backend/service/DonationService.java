@@ -48,6 +48,10 @@ public class DonationService {
         return stats;
     }
 
+    public List<Donation> getDonationsByUserId(String userId) {
+        return donationRepository.findByDonor_UserId(userId);
+    }
+
     public List<Donation> getAllDonations() {
         return donationRepository.findAll();
     }

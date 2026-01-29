@@ -19,6 +19,10 @@ public class SchemeService {
         return schemeRepository.findAll();
     }
 
+    public List<Scheme> getSchemesByCategory(String category) {
+        return schemeRepository.findByCategory(category);
+    }
+
     public Optional<Scheme> getSchemeById(UUID id) {
         return schemeRepository.findById(id);
     }

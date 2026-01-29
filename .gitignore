@@ -12,6 +12,6 @@ node_modules/
 .npm/
 .cache/
 
-# Blockchain build
+# Blockchain build artifacts
 blockchain/artifacts/
 blockchain/cache/

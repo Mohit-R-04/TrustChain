@@ -12,4 +12,5 @@ import java.util.UUID;
 public interface SchemeRepository extends JpaRepository<Scheme, UUID> {
     Optional<Scheme> findBySchemeName(String schemeName);
     List<Scheme> findAllBySchemeName(String schemeName);
+    List<Scheme> findByCategory(String category);
 }
