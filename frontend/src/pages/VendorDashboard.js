@@ -287,7 +287,7 @@ const VendorDashboard = () => {
                                     <option value="">Select an order...</option>
                                     {orders.filter(o => o.status === 'ACCEPTED').map(order => (
                                         <option key={order.manage.manageId} value={order.manage.manageId}>
-                                            {order.manage.scheme.name} (NGO: {order.manage.ngo.name})
+                                            {(order.manage.scheme.schemeName || order.manage.scheme.name)} (NGO: {order.manage.ngo.name})
                                         </option>
                                     ))}
                                 </select>
@@ -332,6 +332,7 @@ const VendorDashboard = () => {
                                     <tr>
                                         <th>Scheme</th>
                                         <th>NGO</th>
+                                        <th>Budget</th>
                                         <th>Status</th>
                                         <th>Date</th>
                                         <th>Actions</th>
@@ -340,8 +341,9 @@ const VendorDashboard = () => {
                                 <tbody>
                                     {orders.length > 0 ? orders.map(order => (
                                         <tr key={order.ngoVendorId}>
-                                            <td>{order.manage.scheme.name}</td>
+                                            <td>{order.manage.scheme.schemeName || order.manage.scheme.name}</td>
                                             <td>{order.manage.ngo.name}</td>
+                                            <td>{order.allocatedBudget != null ? `₹${Number(order.allocatedBudget).toLocaleString()}` : '-'}</td>
                                             <td>
                                                 <span className={`status-badge ${order.status ? order.status.toLowerCase() : 'unknown'}`}>
                                                     {order.status || 'Unknown'}
@@ -369,7 +371,7 @@ const VendorDashboard = () => {
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan="5" className="empty-state">
+                                            <td colSpan="6" className="empty-state">
                                                 No orders found
                                             </td>
                                         </tr>

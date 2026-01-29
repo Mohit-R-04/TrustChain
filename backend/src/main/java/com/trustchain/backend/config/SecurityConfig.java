@@ -62,6 +62,8 @@ public class SecurityConfig {
                                                 // Community needs - Publicly accessible (posted via OTP verification in UI)
                                                 .requestMatchers(HttpMethod.GET, "/api/community-needs/**").permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/api/community-needs/**").permitAll()
+                                                // Vendor endpoints - allow authenticated reads (needed for NGO portal vendor selection)
+                                                .requestMatchers(HttpMethod.GET, "/api/vendor/**").authenticated()
 
                                                 // Allow NGO user details fetch for any authenticated user (fixes 403 on dashboard load)
                                                 .requestMatchers("/api/ngo/user/**").authenticated()

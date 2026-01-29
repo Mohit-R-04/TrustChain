@@ -21,6 +21,11 @@ public class ManageController {
         return ResponseEntity.ok(manageService.getAllManages());
     }
 
+    @GetMapping("/ngo/{ngoId}")
+    public ResponseEntity<List<Manage>> getManagesByNgoId(@PathVariable UUID ngoId) {
+        return ResponseEntity.ok(manageService.getManagesByNgoId(ngoId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Manage> getManageById(@PathVariable UUID id) {
         return manageService.getManageById(id)

@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.util.UUID;
 
 @Entity
-@Table(name = "manage")
+@Table(
+        name = "manage",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"scheme_id"}),
+                @UniqueConstraint(columnNames = {"ngo_id", "scheme_id"})
+        }
+)
 public class Manage {
 
     @Id

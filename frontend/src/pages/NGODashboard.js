@@ -19,6 +19,20 @@ const NGODashboard = () => {
     const [showUploadDocs, setShowUploadDocs] = useState(false);
     const [showBeneficiaries, setShowBeneficiaries] = useState(false);
 
+    const [createProjectStep, setCreateProjectStep] = useState('scheme');
+    const [createdManage, setCreatedManage] = useState(null);
+    const [vendors, setVendors] = useState([]);
+    const [vendorsError, setVendorsError] = useState(null);
+    const [selectedVendorIds, setSelectedVendorIds] = useState([]);
+    const [vendorBudgets, setVendorBudgets] = useState({});
+
+    const [showManageVendors, setShowManageVendors] = useState(false);
+    const [ngoProjects, setNgoProjects] = useState([]);
+    const [selectedManageId, setSelectedManageId] = useState('');
+    const [selectedManage, setSelectedManage] = useState(null);
+    const [existingAssignments, setExistingAssignments] = useState([]);
+    const [manageVendorsError, setManageVendorsError] = useState(null);
+
     const [projectForm, setProjectForm] = useState({
         schemeId: ''
     });
@@ -104,16 +118,242 @@ const NGODashboard = () => {
             });
 
             if (response.ok) {
-                alert('Project created successfully!');
-                setShowCreateProject(false);
-                setProjectForm({ schemeId: '' });
-                fetchDashboardData();
+                const manage = await response.json();
+                setCreatedManage(manage);
+                setCreateProjectStep('vendors');
+                setVendorsError(null);
+                setSelectedVendorIds([]);
+
+                const vendorsRes = await fetch(`${API_URL}/api/vendor`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (vendorsRes.ok) {
+                    const vendorData = await vendorsRes.json();
+                    setVendors(vendorData);
+                } else {
+                    setVendorsError(`Failed to fetch vendors (Status: ${vendorsRes.status})`);
+                    setVendors([]);
+                }
+            } else if (response.status === 409) {
+                const errText = await response.text();
+                alert(errText || 'This scheme is already accepted (duplicate).');
             } else {
                 alert('Failed to create project');
             }
         } catch (error) {
             console.error('Error creating project:', error);
             alert('Error creating project');
+        }
+    };
+
+    const toggleVendorSelection = (vendorId) => {
+        setSelectedVendorIds(prev => {
+            if (prev.includes(vendorId)) {
+                return prev.filter(id => id !== vendorId);
+            }
+            return [...prev, vendorId];
+        });
+    };
+
+    const setVendorBudget = (vendorId, value) => {
+        setVendorBudgets(prev => ({
+            ...prev,
+            [vendorId]: value
+        }));
+    };
+
+    const getSchemeBudgetForSchemeId = (schemeId) => {
+        const scheme = allSchemes.find(s => s.schemeId === schemeId);
+        return scheme?.budget ?? null;
+    };
+
+    const getSelectedVendorsBudgetTotal = () => {
+        return selectedVendorIds.reduce((sum, vendorId) => {
+            const v = vendorBudgets[vendorId];
+            const n = typeof v === 'number' ? v : parseFloat(v);
+            return sum + (Number.isFinite(n) ? n : 0);
+        }, 0);
+    };
+
+    const handleAssignVendors = async (e) => {
+        e.preventDefault();
+        if (!createdManage?.manageId) {
+            alert('Project not created yet.');
+            return;
+        }
+        try {
+            const token = await getToken();
+            const schemeBudget = getSchemeBudgetForSchemeId(projectForm.schemeId);
+            const totalAllocated = getSelectedVendorsBudgetTotal();
+            if (schemeBudget != null && totalAllocated > schemeBudget) {
+                alert(`Total vendor budgets (₹${totalAllocated}) exceed scheme budget (₹${schemeBudget}).`);
+                return;
+            }
+
+            const payloadVendors = selectedVendorIds.map(vendorId => ({
+                vendorId,
+                allocatedBudget: (() => {
+                    const n = parseFloat(vendorBudgets[vendorId]);
+                    return Number.isFinite(n) ? n : 0;
+                })()
+            }));
+
+            const res = await fetch(`${API_URL}/api/ngo-vendor/manage/${createdManage.manageId}/vendors/allocate`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    vendors: payloadVendors
+                })
+            });
+
+            if (res.ok) {
+                alert('Vendors assigned to project successfully!');
+                setShowCreateProject(false);
+                setProjectForm({ schemeId: '' });
+                setCreateProjectStep('scheme');
+                setCreatedManage(null);
+                setVendors([]);
+                setSelectedVendorIds([]);
+                setVendorBudgets({});
+                fetchDashboardData();
+            } else if (res.status === 409) {
+                const errText = await res.text();
+                alert(errText || 'Vendor budgets exceed scheme budget.');
+            } else {
+                alert('Failed to assign vendors');
+            }
+        } catch (error) {
+            console.error('Error assigning vendors:', error);
+            alert('Error assigning vendors');
+        }
+    };
+
+    const openManageVendors = async () => {
+        if (!ngoDetails) {
+            alert("NGO details not found. Please contact support.");
+            return;
+        }
+        try {
+            const token = await getToken();
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            const [projectsRes, vendorsRes] = await Promise.all([
+                fetch(`${API_URL}/api/manage/ngo/${ngoDetails.ngoId}`, { headers }),
+                fetch(`${API_URL}/api/vendor`, { headers })
+            ]);
+
+            if (projectsRes.ok) {
+                const data = await projectsRes.json();
+                setNgoProjects(data);
+            } else {
+                setNgoProjects([]);
+            }
+
+            if (vendorsRes.ok) {
+                const data = await vendorsRes.json();
+                setVendors(data);
+            } else {
+                setVendors([]);
+            }
+
+            setSelectedManageId('');
+            setSelectedManage(null);
+            setExistingAssignments([]);
+            setSelectedVendorIds([]);
+            setVendorBudgets({});
+            setManageVendorsError(null);
+            setShowManageVendors(true);
+        } catch (e) {
+            console.error('Error opening manage vendors:', e);
+            setManageVendorsError('Failed to load projects/vendors');
+            setShowManageVendors(true);
+        }
+    };
+
+    const loadProjectAssignments = async (manageId) => {
+        try {
+            const token = await getToken();
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            const res = await fetch(`${API_URL}/api/ngo-vendor/manage/${manageId}`, { headers });
+            if (!res.ok) {
+                setExistingAssignments([]);
+                setManageVendorsError(`Failed to fetch assignments (Status: ${res.status})`);
+                return;
+            }
+            const data = await res.json();
+            setExistingAssignments(data);
+            setManageVendorsError(null);
+
+            const nonRejected = data.filter(a => (a.status || '').toUpperCase() !== 'REJECTED');
+            setSelectedVendorIds(nonRejected.map(a => a.vendor?.vendorId).filter(Boolean));
+
+            const budgets = {};
+            nonRejected.forEach(a => {
+                if (a.vendor?.vendorId) {
+                    budgets[a.vendor.vendorId] = a.allocatedBudget ?? '';
+                }
+            });
+            setVendorBudgets(budgets);
+        } catch (e) {
+            console.error('Error loading assignments:', e);
+            setExistingAssignments([]);
+            setManageVendorsError('Failed to fetch assignments');
+        }
+    };
+
+    const handleSaveProjectVendors = async (e) => {
+        e.preventDefault();
+        if (!selectedManage?.manageId) {
+            alert('Select a project first.');
+            return;
+        }
+        try {
+            const token = await getToken();
+            const schemeBudget = selectedManage?.scheme?.budget ?? null;
+            const totalAllocated = getSelectedVendorsBudgetTotal();
+            if (schemeBudget != null && totalAllocated > schemeBudget) {
+                alert(`Total vendor budgets (₹${totalAllocated}) exceed scheme budget (₹${schemeBudget}).`);
+                return;
+            }
+
+            const payloadVendors = selectedVendorIds.map(vendorId => ({
+                vendorId,
+                allocatedBudget: (() => {
+                    const n = parseFloat(vendorBudgets[vendorId]);
+                    return Number.isFinite(n) ? n : 0;
+                })()
+            }));
+
+            const res = await fetch(`${API_URL}/api/ngo-vendor/manage/${selectedManage.manageId}/vendors/allocate`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ vendors: payloadVendors })
+            });
+
+            if (res.ok) {
+                alert('Vendors saved successfully!');
+                setShowManageVendors(false);
+                setSelectedManageId('');
+                setSelectedManage(null);
+                setExistingAssignments([]);
+                setSelectedVendorIds([]);
+                setVendorBudgets({});
+            } else if (res.status === 409) {
+                const errText = await res.text();
+                alert(errText || 'Vendor budgets exceed scheme budget.');
+            } else {
+                alert('Failed to save vendors');
+            }
+        } catch (e) {
+            console.error('Error saving vendors:', e);
+            alert('Error saving vendors');
         }
     };
 
@@ -162,9 +402,23 @@ const NGODashboard = () => {
                             onClick={() => {
                                 fetchDashboardData();
                                 setShowCreateProject(true);
+                                setCreateProjectStep('scheme');
+                                setCreatedManage(null);
+                                setVendors([]);
+                                setSelectedVendorIds([]);
+                                setVendorBudgets({});
+                                setVendorsError(null);
                             }}
                         >
                             New Project
+                        </button>
+                        <button
+                            className="action-btn secondary"
+                            onClick={openManageVendors}
+                            disabled={!ngoDetails}
+                            title={!ngoDetails ? "NGO details not loaded" : ""}
+                        >
+                            Manage Vendors
                         </button>
                         <button 
                             className="action-btn secondary"
@@ -187,88 +441,363 @@ const NGODashboard = () => {
                 <div className="modal-overlay">
                     <div className="modal-content" style={{ maxWidth: '800px' }}>
                         <div className="modal-header">
-                            <h3>Create New Project</h3>
-                            <button className="close-btn" onClick={() => setShowCreateProject(false)}>×</button>
+                            <h3>{createProjectStep === 'scheme' ? 'Create New Project' : 'Select Vendors'}</h3>
+                            <button
+                                className="close-btn"
+                                onClick={() => {
+                                    setShowCreateProject(false);
+                                    setProjectForm({ schemeId: '' });
+                                    setCreateProjectStep('scheme');
+                                    setCreatedManage(null);
+                                    setVendors([]);
+                                    setSelectedVendorIds([]);
+                                    setVendorBudgets({});
+                                    setVendorsError(null);
+                                }}
+                            >
+                                ×
+                            </button>
                         </div>
-                        <form onSubmit={handleCreateProject}>
-                            <div className="form-group">
-                                <label>Filter by Category</label>
-                                <select 
-                                    value={selectedCategory} 
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
-                                    style={{ marginBottom: '15px' }}
-                                >
-                                    {['All', ...new Set(allSchemes.map(s => s.category).filter(Boolean))].map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                    <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
-                                        <tr>
-                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Select</th>
-                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Scheme Name</th>
-                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Category</th>
-                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Region</th>
-                                            <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Budget</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {schemes.map(scheme => (
-                                            <tr 
-                                                key={scheme.schemeId} 
-                                                onClick={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
-                                                style={{ 
-                                                    cursor: 'pointer', 
-                                                    backgroundColor: projectForm.schemeId === scheme.schemeId ? '#eff6ff' : 'transparent',
-                                                    borderBottom: '1px solid #f1f5f9'
-                                                }}
-                                            >
-                                                <td style={{ padding: '12px' }}>
-                                                    <input 
-                                                        type="radio" 
-                                                        name="selectedScheme" 
-                                                        checked={projectForm.schemeId === scheme.schemeId}
-                                                        onChange={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
-                                                    />
-                                                </td>
-                                                <td style={{ padding: '12px' }}>{scheme.schemeName}</td>
-                                                <td style={{ padding: '12px' }}>{scheme.category || '-'}</td>
-                                                <td style={{ padding: '12px' }}>{scheme.region || '-'}</td>
-                                                <td style={{ padding: '12px' }}>₹{scheme.budget?.toLocaleString()}</td>
-                                            </tr>
+                        {createProjectStep === 'scheme' ? (
+                            <form onSubmit={handleCreateProject}>
+                                <div className="form-group">
+                                    <label>Filter by Category</label>
+                                    <select 
+                                        value={selectedCategory} 
+                                        onChange={(e) => setSelectedCategory(e.target.value)}
+                                        style={{ marginBottom: '15px' }}
+                                    >
+                                        {['All', ...new Set(allSchemes.map(s => s.category).filter(Boolean))].map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
                                         ))}
-                                        {schemes.length === 0 && (
+                                    </select>
+                                </div>
+
+                                <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                    <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
                                             <tr>
-                                                <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
-                                                    {schemesError ? <span style={{color: 'red'}}>{schemesError}</span> : "No schemes available."}
-                                                </td>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Select</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Scheme Name</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Category</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Region</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Budget</th>
                                             </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                                <button 
-                                    type="button" 
-                                    className="action-btn secondary" 
-                                    onClick={() => setShowCreateProject(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    className="submit-btn" 
-                                    disabled={!projectForm.schemeId}
-                                    style={{ width: 'auto', marginTop: 0 }}
-                                >
-                                    Accept Project
-                                </button>
-                            </div>
-                        </form>
+                                        </thead>
+                                        <tbody>
+                                            {schemes.map(scheme => (
+                                                <tr 
+                                                    key={scheme.schemeId} 
+                                                    onClick={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
+                                                    style={{ 
+                                                        cursor: 'pointer', 
+                                                        backgroundColor: projectForm.schemeId === scheme.schemeId ? 'rgba(79, 70, 229, 0.25)' : 'transparent',
+                                                        color: projectForm.schemeId === scheme.schemeId ? '#ffffff' : undefined,
+                                                        borderBottom: '1px solid #f1f5f9'
+                                                    }}
+                                                >
+                                                    <td style={{ padding: '12px' }}>
+                                                        <input 
+                                                            type="radio" 
+                                                            name="selectedScheme" 
+                                                            checked={projectForm.schemeId === scheme.schemeId}
+                                                            onChange={() => setProjectForm({...projectForm, schemeId: scheme.schemeId})}
+                                                        />
+                                                    </td>
+                                                    <td style={{ padding: '12px' }}>{scheme.schemeName}</td>
+                                                    <td style={{ padding: '12px' }}>{scheme.category || '-'}</td>
+                                                    <td style={{ padding: '12px' }}>{scheme.region || '-'}</td>
+                                                    <td style={{ padding: '12px' }}>₹{scheme.budget?.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                            {schemes.length === 0 && (
+                                                <tr>
+                                                    <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                                                        {schemesError ? <span style={{color: 'red'}}>{schemesError}</span> : "No schemes available."}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                    <button 
+                                        type="button" 
+                                        className="action-btn secondary" 
+                                        onClick={() => {
+                                            setShowCreateProject(false);
+                                            setProjectForm({ schemeId: '' });
+                                            setCreateProjectStep('scheme');
+                                            setCreatedManage(null);
+                                            setVendors([]);
+                                            setSelectedVendorIds([]);
+                                            setVendorsError(null);
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="submit-btn" 
+                                        disabled={!projectForm.schemeId}
+                                        style={{ width: 'auto', marginTop: 0 }}
+                                    >
+                                        Accept Project
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleAssignVendors}>
+                                <div style={{ marginBottom: '10px', color: '#64748b' }}>
+                                    Project created. You can assign vendors now or later.
+                                </div>
+
+                                <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                    <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
+                                            <tr>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Select</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Vendor Name</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Email</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>GSTIN</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>KYC Status</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Budget (₹)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {vendors.map(vendor => (
+                                                <tr
+                                                    key={vendor.vendorId}
+                                                    onClick={() => toggleVendorSelection(vendor.vendorId)}
+                                                    style={{
+                                                        cursor: 'pointer',
+                                                        backgroundColor: selectedVendorIds.includes(vendor.vendorId) ? 'rgba(79, 70, 229, 0.25)' : 'transparent',
+                                                        color: selectedVendorIds.includes(vendor.vendorId) ? '#ffffff' : undefined,
+                                                        borderBottom: '1px solid #f1f5f9'
+                                                    }}
+                                                >
+                                                    <td style={{ padding: '12px' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedVendorIds.includes(vendor.vendorId)}
+                                                            onChange={() => toggleVendorSelection(vendor.vendorId)}
+                                                        />
+                                                    </td>
+                                                    <td style={{ padding: '12px' }}>{vendor.name || '-'}</td>
+                                                    <td style={{ padding: '12px' }}>{vendor.email || '-'}</td>
+                                                    <td style={{ padding: '12px' }}>{vendor.gstin || '-'}</td>
+                                                    <td style={{ padding: '12px' }}>{vendor.kycStatus || '-'}</td>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={vendorBudgets[vendor.vendorId] ?? ''}
+                                                            onChange={(e) => setVendorBudget(vendor.vendorId, e.target.value)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            style={{ width: '120px' }}
+                                                            disabled={!selectedVendorIds.includes(vendor.vendorId)}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {vendors.length === 0 && (
+                                                <tr>
+                                                    <td colSpan="6" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                                                        {vendorsError ? <span style={{color: 'red'}}>{vendorsError}</span> : "No vendors available."}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                                    <button
+                                        type="button"
+                                        className="action-btn secondary"
+                                        onClick={() => setCreateProjectStep('scheme')}
+                                    >
+                                        Back
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="action-btn secondary"
+                                        onClick={() => {
+                                            setShowCreateProject(false);
+                                            setProjectForm({ schemeId: '' });
+                                            setCreateProjectStep('scheme');
+                                            setCreatedManage(null);
+                                            setVendors([]);
+                                            setSelectedVendorIds([]);
+                                            setVendorBudgets({});
+                                            setVendorsError(null);
+                                        }}
+                                    >
+                                        Skip For Now
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="submit-btn"
+                                        disabled={selectedVendorIds.length === 0}
+                                        style={{ width: 'auto', marginTop: 0 }}
+                                    >
+                                        Save Vendors
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {showManageVendors && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ maxWidth: '900px' }}>
+                        <div className="modal-header">
+                            <h3>Manage Project Vendors</h3>
+                            <button
+                                className="close-btn"
+                                onClick={() => {
+                                    setShowManageVendors(false);
+                                    setSelectedManageId('');
+                                    setSelectedManage(null);
+                                    setExistingAssignments([]);
+                                    setSelectedVendorIds([]);
+                                    setVendorBudgets({});
+                                    setManageVendorsError(null);
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {manageVendorsError && (
+                            <div style={{ marginBottom: '10px', color: 'red' }}>{manageVendorsError}</div>
+                        )}
+
+                        <div className="form-group">
+                            <label>Select Project</label>
+                            <select
+                                value={selectedManageId}
+                                onChange={(e) => {
+                                    const id = e.target.value;
+                                    setSelectedManageId(id);
+                                    const m = ngoProjects.find(p => p.manageId === id) || null;
+                                    setSelectedManage(m);
+                                    setExistingAssignments([]);
+                                    setSelectedVendorIds([]);
+                                    setVendorBudgets({});
+                                    if (id) {
+                                        loadProjectAssignments(id);
+                                    }
+                                }}
+                            >
+                                <option value="">Select...</option>
+                                {ngoProjects.map(p => (
+                                    <option key={p.manageId} value={p.manageId}>
+                                        {p.scheme?.schemeName || p.scheme?.name || 'Scheme'} (Budget: ₹{p.scheme?.budget?.toLocaleString?.() || p.scheme?.budget || 0})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {selectedManage && (
+                            <form onSubmit={handleSaveProjectVendors}>
+                                <div style={{ marginBottom: '10px', color: '#64748b' }}>
+                                    Scheme budget: ₹{selectedManage.scheme?.budget?.toLocaleString?.() || selectedManage.scheme?.budget || 0} | Selected total: ₹{getSelectedVendorsBudgetTotal()}
+                                </div>
+
+                                <div className="table-container" style={{ maxHeight: '320px', overflowY: 'auto', marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                                    <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
+                                            <tr>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Select</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Vendor</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Email</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Status</th>
+                                                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Budget (₹)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {vendors.map(vendor => {
+                                                const assignment = existingAssignments.find(a => a.vendor?.vendorId === vendor.vendorId) || null;
+                                                const isRejected = (assignment?.status || '').toUpperCase() === 'REJECTED';
+                                                const isExistingNonRejected = assignment && !isRejected;
+                                                const status = (assignment?.status || '').toUpperCase();
+                                                const statusClass = status === 'ACCEPTED' ? 'accepted' : status === 'REJECTED' ? 'rejected' : status === 'PENDING' ? 'pending' : '';
+                                                const statusLabel = status === 'ACCEPTED' ? 'Accepted' : status === 'REJECTED' ? 'Rejected' : status === 'PENDING' ? 'Pending' : '-';
+                                                return (
+                                                    <tr
+                                                        key={vendor.vendorId}
+                                                        onClick={() => {
+                                                            if (isExistingNonRejected) return;
+                                                            toggleVendorSelection(vendor.vendorId);
+                                                        }}
+                                                        style={{
+                                                            cursor: isExistingNonRejected ? 'default' : 'pointer',
+                                                            backgroundColor: selectedVendorIds.includes(vendor.vendorId) ? 'rgba(79, 70, 229, 0.25)' : 'transparent',
+                                                            color: selectedVendorIds.includes(vendor.vendorId) ? '#ffffff' : undefined,
+                                                            borderBottom: '1px solid #f1f5f9'
+                                                        }}
+                                                    >
+                                                        <td style={{ padding: '12px' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedVendorIds.includes(vendor.vendorId)}
+                                                                disabled={isExistingNonRejected}
+                                                                onChange={() => {
+                                                                    if (isExistingNonRejected) return;
+                                                                    toggleVendorSelection(vendor.vendorId);
+                                                                }}
+                                                            />
+                                                        </td>
+                                                        <td style={{ padding: '12px' }}>{vendor.name || '-'}</td>
+                                                        <td style={{ padding: '12px' }}>{vendor.email || '-'}</td>
+                                                        <td style={{ padding: '12px' }}>
+                                                            {statusLabel === '-' ? (
+                                                                <span>-</span>
+                                                            ) : (
+                                                                <span className={`status-badge ${statusClass}`}>{statusLabel}</span>
+                                                            )}
+                                                        </td>
+                                                        <td style={{ padding: '12px' }}>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                value={vendorBudgets[vendor.vendorId] ?? (assignment?.allocatedBudget ?? '')}
+                                                                onChange={(e) => setVendorBudget(vendor.vendorId, e.target.value)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                style={{ width: '120px' }}
+                                                                disabled={!selectedVendorIds.includes(vendor.vendorId)}
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {vendors.length === 0 && (
+                                                <tr>
+                                                    <td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                                                        No vendors available.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                    <button type="button" className="action-btn secondary" onClick={() => setShowManageVendors(false)}>
+                                        Close
+                                    </button>
+                                    <button type="submit" className="submit-btn" style={{ width: 'auto', marginTop: 0 }}>
+                                        Save
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}
