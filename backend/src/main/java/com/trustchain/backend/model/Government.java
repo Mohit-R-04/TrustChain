@@ -26,8 +26,19 @@ public class Government {
     @Column(name = "phone_number")
     private String phoneNumber;
 
+    @Column(name = "type")
+    private String type;
+
     @OneToMany(mappedBy = "government", cascade = CascadeType.ALL)
     private List<Scheme> schemes = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(
+        name = "government_adopted_schemes",
+        joinColumns = @JoinColumn(name = "govt_id"),
+        inverseJoinColumns = @JoinColumn(name = "scheme_id")
+    )
+    private List<Scheme> adoptedSchemes = new ArrayList<>();
 
     // Constructors
     public Government() {
@@ -78,11 +89,27 @@ public class Government {
         this.phoneNumber = phoneNumber;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
     public List<Scheme> getSchemes() {
         return schemes;
     }
 
     public void setSchemes(List<Scheme> schemes) {
         this.schemes = schemes;
+    }
+
+    public List<Scheme> getAdoptedSchemes() {
+        return adoptedSchemes;
+    }
+
+    public void setAdoptedSchemes(List<Scheme> adoptedSchemes) {
+        this.adoptedSchemes = adoptedSchemes;
     }
 }

@@ -187,7 +187,7 @@ const AuthCallback = () => {
                         fontSize: '24px',
                         fontWeight: '700',
                         marginBottom: '16px'
-                    }}>Account Already Exists</h2>
+                    }}>{error.existingRole ? 'Account Already Exists' : 'Authentication Error'}</h2>
 
                     {error.existingRole && (
                         <p style={{

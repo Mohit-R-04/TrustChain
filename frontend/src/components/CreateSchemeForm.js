@@ -4,7 +4,7 @@ import './CreateSchemeForm.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
-const CreateSchemeForm = ({ onClose, onSuccess }) => {
+const CreateSchemeForm = ({ onClose, onSuccess, govtType }) => {
     const { getToken } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -17,7 +17,8 @@ const CreateSchemeForm = ({ onClose, onSuccess }) => {
         expectedBeneficiaries: '',
         milestoneCount: '',
         deadline: '',
-        description: ''
+        description: '',
+        schemeType: 'CENTRAL_MANDATORY'
     });
 
     const handleChange = (e) => {
@@ -44,7 +45,8 @@ const CreateSchemeForm = ({ onClose, onSuccess }) => {
                 milestoneCount: parseInt(formData.milestoneCount),
                 endDate: formData.deadline, // Mapping deadline to endDate
                 description: formData.description,
-                isFinished: false
+                isFinished: false,
+                schemeType: govtType === 'CENTRAL' ? formData.schemeType : 'STATE'
             };
 
             const response = await fetch(`${API_URL}/api/scheme`, {
@@ -94,6 +96,21 @@ const CreateSchemeForm = ({ onClose, onSuccess }) => {
                                 required
                             />
                         </div>
+
+                        {govtType === 'CENTRAL' && (
+                            <div className="form-group">
+                                <label>Scheme Type</label>
+                                <select
+                                    name="schemeType"
+                                    value={formData.schemeType}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="CENTRAL_MANDATORY">Mandatory for States</option>
+                                    <option value="CENTRAL_OPTIONAL">Optional for States</option>
+                                </select>
+                            </div>
+                        )}
 
                         <div className="form-group">
                             <label>Category</label>

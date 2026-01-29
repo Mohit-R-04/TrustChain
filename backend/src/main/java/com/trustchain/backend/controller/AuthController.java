@@ -168,6 +168,17 @@ public class AuthController {
                     government.setEmail(email);
                     government.setGovtName(effectiveName);
                     government.setPhoneNumber(phoneNumber);
+                    
+                    // Domain-based Government Type Assignment
+                    if (email != null && email.toLowerCase().endsWith(".edu.in")) {
+                        government.setType("CENTRAL");
+                    } else if (email != null && email.toLowerCase().endsWith("@gmail.com")) {
+                        government.setType("STATE");
+                    } else {
+                        // Default fallback (e.g., STATE or maybe REJECT)
+                        government.setType("STATE"); 
+                    }
+                    
                     governmentRepository.save(government);
                     break;
                 }

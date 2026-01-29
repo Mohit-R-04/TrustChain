@@ -39,6 +39,9 @@ const GovernmentDashboard = () => {
     const [schemes, setSchemes] = useState([]);
     const [invoices, setInvoices] = useState([]);
     const [invoicesError, setInvoicesError] = useState(null);
+    const [govtType, setGovtType] = useState(null);
+    const [showAdoptModal, setShowAdoptModal] = useState(false);
+    const [availableSchemes, setAvailableSchemes] = useState([]);
 
     useEffect(() => {
         if (user) {
@@ -56,8 +59,15 @@ const GovernmentDashboard = () => {
             const token = await getToken();
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            // Fetch Schemes
-            const schemesRes = await fetch(`${API_URL}/api/scheme`);
+            // Fetch Government Details
+            const dashboardRes = await fetch(`${API_URL}/api/government/dashboard`, { headers });
+            if (dashboardRes.ok) {
+                const data = await dashboardRes.json();
+                setGovtType(data.govtType);
+            }
+
+            // Fetch Schemes (My Schemes)
+            const schemesRes = await fetch(`${API_URL}/api/scheme/my-schemes`, { headers });
             if (schemesRes.ok) {
                 const data = await schemesRes.json();
                 setSchemes(data);
@@ -83,6 +93,43 @@ const GovernmentDashboard = () => {
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+        }
+    };
+
+    const fetchAvailableSchemes = async () => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/scheme/available-for-adoption`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAvailableSchemes(data);
+                setShowAdoptModal(true);
+            }
+        } catch (error) {
+            console.error('Error fetching available schemes:', error);
+        }
+    };
+
+    const handleAdoptScheme = async (schemeId) => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/scheme/adopt/${schemeId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                alert('Scheme accepted successfully!');
+                setShowAdoptModal(false);
+                fetchDashboardData(); // Refresh my schemes
+            } else {
+                const err = await res.text();
+                alert('Failed to accept scheme: ' + err);
+            }
+        } catch (error) {
+            console.error('Error accepting scheme:', error);
         }
     };
 
@@ -278,6 +325,17 @@ const GovernmentDashboard = () => {
                         >
                             Create New Scheme
                         </button>
+                        
+                        {/* Only State Govt can see Adopt Scheme Button */}
+                        {govtType === 'STATE' && (
+                            <button
+                                className="action-btn secondary"
+                                onClick={fetchAvailableSchemes}
+                            >
+                                Accept Central Scheme
+                            </button>
+                        )}
+
                         <button
                             className="action-btn primary"
                             onClick={() => setShowDonationModal(true)}
@@ -323,6 +381,83 @@ const GovernmentDashboard = () => {
                     </div>
                 </div>
 
+                <div className="action-section">
+                    <h2>My Schemes</h2>
+                    {schemes.length === 0 ? (
+                        <p className="empty-state" style={{ color: '#94a3b8', fontStyle: 'italic' }}>No schemes found.</p>
+                    ) : (
+                        <div className="schemes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                            {/* For State Govt, split into categories */}
+                            {govtType === 'STATE' ? (
+                                <>
+                                    <div className="scheme-category full-width" style={{ gridColumn: '1 / -1' }}>
+                                        <h3 style={{ color: '#e2e8f0', borderBottom: '1px solid #334155', paddingBottom: '10px', marginBottom: '15px' }}>
+                                            Accepted Central Schemes
+                                        </h3>
+                                        <div className="sub-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                                            {schemes.filter(s => s.schemeType?.startsWith('CENTRAL')).length === 0 && (
+                                                <p style={{ color: '#64748b' }}>No Central schemes accepted yet.</p>
+                                            )}
+                                            {schemes.filter(s => s.schemeType?.startsWith('CENTRAL')).map(scheme => (
+                                                <div key={scheme.schemeId} className="stat-card" style={{ cursor: 'pointer' }} onClick={() => {
+                                                    setSelectedSchemeId(scheme.schemeId);
+                                                    setShowSchemeDetailsModal(true);
+                                                }}>
+                                                    <div className="stat-icon" style={{ background: 'rgba(79, 70, 229, 0.2)', color: '#818cf8' }}>🏛️</div>
+                                                    <div className="stat-content">
+                                                        <h3>{scheme.schemeName}</h3>
+                                                        <p className="stat-value" style={{ fontSize: '18px' }}>₹{scheme.budget?.toLocaleString()}</p>
+                                                        <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>{scheme.schemeType}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="scheme-category full-width" style={{ gridColumn: '1 / -1', marginTop: '20px' }}>
+                                        <h3 style={{ color: '#e2e8f0', borderBottom: '1px solid #334155', paddingBottom: '10px', marginBottom: '15px' }}>
+                                            State Schemes
+                                        </h3>
+                                        <div className="sub-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                                            {schemes.filter(s => !s.schemeType?.startsWith('CENTRAL')).length === 0 && (
+                                                <p style={{ color: '#64748b' }}>No State schemes created yet.</p>
+                                            )}
+                                            {schemes.filter(s => !s.schemeType?.startsWith('CENTRAL')).map(scheme => (
+                                                <div key={scheme.schemeId} className="stat-card" style={{ cursor: 'pointer' }} onClick={() => {
+                                                    setSelectedSchemeId(scheme.schemeId);
+                                                    setShowSchemeDetailsModal(true);
+                                                }}>
+                                                    <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399' }}>📍</div>
+                                                    <div className="stat-content">
+                                                        <h3>{scheme.schemeName}</h3>
+                                                        <p className="stat-value" style={{ fontSize: '18px' }}>₹{scheme.budget?.toLocaleString()}</p>
+                                                        <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>{scheme.schemeType}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                /* Central Govt - Show all schemes */
+                                schemes.map(scheme => (
+                                    <div key={scheme.schemeId} className="stat-card" style={{ cursor: 'pointer' }} onClick={() => {
+                                        setSelectedSchemeId(scheme.schemeId);
+                                        setShowSchemeDetailsModal(true);
+                                    }}>
+                                        <div className="stat-icon">📜</div>
+                                        <div className="stat-content">
+                                            <h3>{scheme.schemeName}</h3>
+                                            <p className="stat-value" style={{ fontSize: '18px' }}>₹{scheme.budget?.toLocaleString()}</p>
+                                            <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>{scheme.schemeType}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 <BlockchainPanel />
             </div>
 
@@ -341,7 +476,54 @@ const GovernmentDashboard = () => {
                         fetchDashboardData();
                         setShowCreateForm(false);
                     }}
+                    govtType={govtType}
                 />
+            )}
+
+            {/* Adopt Scheme Modal */}
+            {showAdoptModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content large-modal">
+                        <div className="modal-header">
+                            <h3>Adopt Central Schemes</h3>
+                            <button className="close-btn" onClick={() => setShowAdoptModal(false)}>×</button>
+                        </div>
+                        <div className="table-container">
+                            {availableSchemes.length === 0 ? (
+                                <p className="empty-state">No schemes available for adoption.</p>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scheme Name</th>
+                                            <th>Budget</th>
+                                            <th>Description</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {availableSchemes.map(scheme => (
+                                            <tr key={scheme.schemeId}>
+                                                <td>{scheme.schemeName}</td>
+                                                <td>₹{scheme.budget?.toLocaleString()}</td>
+                                                <td>{scheme.description?.substring(0, 50)}...</td>
+                                                <td>
+                                                    <button 
+                                                        className="action-btn secondary"
+                                                        style={{padding: '5px 10px', fontSize: '12px'}}
+                                                        onClick={() => handleAdoptScheme(scheme.schemeId)}
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Monitor Funds Modal */}

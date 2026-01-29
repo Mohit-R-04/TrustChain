@@ -21,7 +21,7 @@ import AuthCallback from './components/AuthCallback';
 import ClearUserRole from './components/ClearUserRole';
 
 // Get Clerk publishable key from environment variable
-const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY || 'pk_test_YWN0aXZlLWxhZHliaXJkLTk1LmNsZXJrLmFjY291bnRzLmRldiQ';
 const clerkJsFallbackUrl = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
 
 class ErrorBoundary extends React.Component {

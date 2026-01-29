@@ -33,10 +33,19 @@ public class GovernmentController {
     @GetMapping("/dashboard")
     @RequireRole(UserRole.GOVERNMENT)
     public ResponseEntity<Map<String, Object>> getDashboard(Authentication authentication) {
+        String userId = authentication.getName();
+        Government government = governmentRepository.findByUserId(userId).orElse(null);
+        
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Welcome to Government Dashboard");
-        response.put("userId", authentication.getName());
+        response.put("userId", userId);
         response.put("role", "GOVERNMENT");
+        
+        if (government != null) {
+            response.put("govtName", government.getGovtName());
+            response.put("govtType", government.getType());
+        }
+        
         response.put("stats", Map.of(
                 "totalSchemes", 0,
                 "fundsAllocated", 0,

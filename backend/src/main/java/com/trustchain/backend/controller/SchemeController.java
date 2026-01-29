@@ -51,8 +51,45 @@ public class SchemeController {
                     g.setGovtName("Government " + (userId.length() > 5 ? userId.substring(0, 5) : userId));
                     return governmentRepository.save(g);
                 });
+        
+        // Enforce scheme type
+        if ("CENTRAL".equals(government.getType())) {
+            if (scheme.getSchemeType() == null || 
+               (!"CENTRAL_MANDATORY".equals(scheme.getSchemeType()) && 
+                !"CENTRAL_OPTIONAL".equals(scheme.getSchemeType()))) {
+                // Default to MANDATORY if not specified or invalid
+                scheme.setSchemeType("CENTRAL_MANDATORY");
+            }
+        } else {
+            // STATE
+            scheme.setSchemeType("STATE");
+        }
+        
         scheme.setGovernment(government);
         return ResponseEntity.ok(schemeService.createScheme(scheme));
+    }
+    
+    @PostMapping("/adopt/{schemeId}")
+    @RequireRole(UserRole.GOVERNMENT)
+    public ResponseEntity<?> adoptScheme(@PathVariable UUID schemeId, Authentication authentication) {
+        try {
+            schemeService.adoptScheme(authentication.getName(), schemeId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    
+    @GetMapping("/my-schemes")
+    @RequireRole(UserRole.GOVERNMENT)
+    public ResponseEntity<List<Scheme>> getMySchemes(Authentication authentication) {
+        return ResponseEntity.ok(schemeService.getSchemesForGovernment(authentication.getName()));
+    }
+    
+    @GetMapping("/available-for-adoption")
+    @RequireRole(UserRole.GOVERNMENT)
+    public ResponseEntity<List<Scheme>> getAvailableSchemes(Authentication authentication) {
+        return ResponseEntity.ok(schemeService.getAvailableForAdoption(authentication.getName()));
     }
 
     @PutMapping("/{id}")

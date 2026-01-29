@@ -43,6 +43,9 @@ public class Scheme {
     @Column(name = "description", length = 1000)
     private String description;
 
+    @Column(name = "scheme_type")
+    private String schemeType; // "CENTRAL_MANDATORY", "CENTRAL_OPTIONAL", "STATE"
+
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
 
@@ -111,6 +114,14 @@ public class Scheme {
 
     public void setIsFinished(Boolean isFinished) {
         this.isFinished = isFinished;
+    }
+
+    public String getSchemeType() {
+        return schemeType;
+    }
+
+    public void setSchemeType(String schemeType) {
+        this.schemeType = schemeType;
     }
 
     public String getCategory() {
