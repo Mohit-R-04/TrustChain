@@ -2,3 +2,16 @@ trustchain/firebase-key.json
 node_modules/
 build/
 .env
+# Maven / local
+**/.home/
+**/.m2/
+target/
+
+# Node
+node_modules/
+.npm/
+.cache/
+
+# Blockchain build artifacts
+blockchain/artifacts/
+blockchain/cache/
