@@ -11,6 +11,16 @@ services:
       - SPRING_DATASOURCE_USERNAME=postgres.levgjidflauapuruzrsp
       - SPRING_DATASOURCE_PASSWORD=Tiforge@123
       - CLERK_SECRET_KEY=sk_test_5OUIw2E454IC3UVvkKn10YwKHlb02GBjdhnIY3mNvA
+      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_SMTP_AUTH=${MAIL_SMTP_AUTH:-true}
+      - MAIL_AUTH_MECHANISMS=${MAIL_AUTH_MECHANISMS:-LOGIN}
+      - MAIL_SSL_TRUST=${MAIL_SSL_TRUST:-smtp.gmail.com}
+      - MAIL_DEBUG=${MAIL_DEBUG:-false}
+      - OTP_DELIVERY_MODE=${OTP_DELIVERY_MODE:-email}
+      - OTP_DELIVERY_FALLBACK_TO_LOG=${OTP_DELIVERY_FALLBACK_TO_LOG:-false}
     restart: unless-stopped
     networks:
       - trustchain-network

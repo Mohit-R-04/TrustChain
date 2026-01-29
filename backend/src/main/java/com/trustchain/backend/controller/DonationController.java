@@ -37,6 +37,11 @@ public class DonationController {
 
     @PostMapping
     public ResponseEntity<Donation> createDonation(@RequestBody DonationRequest request, Authentication authentication) {
+        boolean isGovernment = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_GOVERNMENT".equals(a.getAuthority()));
+        if (isGovernment) {
+            return ResponseEntity.ok(donationService.processDonationAsGovernment(request, authentication.getName()));
+        }
         return ResponseEntity.ok(donationService.processDonation(request, authentication.getName()));
     }
 

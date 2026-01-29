@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import './CitizenPage.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+
 const CitizenPage = () => {
     const navigate = useNavigate();
     const { isSignedIn } = useUser();
@@ -10,6 +12,8 @@ const CitizenPage = () => {
     const [selectedLocation, setSelectedLocation] = React.useState('All');
     const [searchQuery, setSearchQuery] = React.useState('');
     const [isPostModalOpen, setIsPostModalOpen] = React.useState(false);
+    const [projects, setProjects] = React.useState([]);
+    const [transparency, setTransparency] = React.useState(null);
 
     // New state for OTP
     const [email, setEmail] = React.useState('');
@@ -38,17 +42,19 @@ const CitizenPage = () => {
 
         setVerificationStatus('Sending OTP...');
         try {
-            const response = await fetch('http://localhost:8080/api/otp/send', {
+            const response = await fetch(`${API_URL}/api/otp/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
             });
             if (response.ok) {
                 setIsOtpSent(true);
-                setVerificationStatus('OTP sent to your email.');
+                const text = await response.text().catch(() => '');
+                setVerificationStatus(text || 'OTP sent to your email.');
                 setTimer(30); // Start 30 seconds timer
             } else {
-                setVerificationStatus('Failed to send OTP. Please try again.');
+                const text = await response.text().catch(() => '');
+                setVerificationStatus(text || 'Failed to send OTP. Please try again.');
             }
         } catch (error) {
             console.error('Error sending OTP:', error);
@@ -62,7 +68,7 @@ const CitizenPage = () => {
             return;
         }
         try {
-            const response = await fetch('http://localhost:8080/api/otp/verify', {
+            const response = await fetch(`${API_URL}/api/otp/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, otp })
@@ -71,7 +77,8 @@ const CitizenPage = () => {
                 setIsOtpVerified(true);
                 setVerificationStatus('');
             } else {
-                setVerificationStatus('Invalid or expired OTP.');
+                const text = await response.text().catch(() => '');
+                setVerificationStatus(text || 'Invalid or expired OTP.');
             }
         } catch (error) {
             console.error('Error verifying OTP:', error);
@@ -102,64 +109,29 @@ const CitizenPage = () => {
         }
     }, [isPostModalOpen]);
 
-    const projects = [
-        {
-            id: '0',
-            title: "Clean Water Initiative",
-            location: "Maharashtra",
-            category: "Water",
-            progress: 75,
-            amount: "₹12,50,000",
-            donors: "5,000"
-        },
-        {
-            id: '1',
-            title: "Rural Education Program",
-            location: "Bihar",
-            category: "Education",
-            progress: 45,
-            amount: "₹8,00,000",
-            donors: "2,500"
-        },
-        {
-            id: '2',
-            title: "Health Camp Network",
-            location: "Rajasthan",
-            category: "Health",
-            progress: 90,
-            amount: "₹6,50,000",
-            donors: "8,000"
-        },
-        {
-            id: '3',
-            title: "Solar Village Project",
-            location: "Gujarat",
-            category: "Infrastructure",
-            progress: 30,
-            amount: "₹15,00,000",
-            donors: "3,000"
-        },
-        {
-            id: '4',
-            title: "Women Empowerment",
-            location: "Uttar Pradesh",
-            category: "Education",
-            progress: 65,
-            amount: "₹4,20,000",
-            donors: "1,500"
-        },
-        {
-            id: '5',
-            title: "Tribal Healthcare",
-            location: "Jharkhand",
-            category: "Health",
-            progress: 55,
-            amount: "₹9,80,000",
-            donors: "6,000"
-        }
-    ];
+    React.useEffect(() => {
+        const load = async () => {
+            try {
+                const [tRes, pRes] = await Promise.all([
+                    fetch(`${API_URL}/api/citizen/transparency`),
+                    fetch(`${API_URL}/api/citizen/projects`)
+                ]);
+                if (tRes.ok) {
+                    const tData = await tRes.json();
+                    setTransparency(tData);
+                }
+                if (pRes.ok) {
+                    const pData = await pRes.json();
+                    setProjects(Array.isArray(pData?.projects) ? pData.projects : []);
+                }
+            } catch (err) {
+                console.error('Failed to load citizen data:', err);
+            }
+        };
+        load();
+    }, []);
 
-    const locations = ['All', ...new Set(projects.map(p => p.location))];
+    const locations = React.useMemo(() => ['All', ...new Set(projects.map(p => p.location).filter(Boolean))], [projects]);
 
     const filteredProjects = projects.filter(project => {
         const matchesLocation = selectedLocation === 'All' || project.location === selectedLocation;
@@ -217,25 +189,25 @@ const CitizenPage = () => {
                 <div className="stat-box">
                     <div className="stat-icon-box">💰</div>
                     <h3>Total Funds</h3>
-                    <p className="stat-number">₹23,500,000</p>
+                    <p className="stat-number">₹{Number(transparency?.totalFundsInr || 0).toLocaleString()}</p>
                 </div>
 
                 <div className="stat-box">
                     <div className="stat-icon-box">🚀</div>
                     <h3>Projects</h3>
-                    <p className="stat-number">47</p>
+                    <p className="stat-number">{Number(transparency?.projects || 0).toLocaleString()}</p>
                 </div>
 
                 <div className="stat-box">
                     <div className="stat-icon-box">✅</div>
                     <h3>Transactions Verified</h3>
-                    <p className="stat-number">2,847</p>
+                    <p className="stat-number">{Number(transparency?.transactionsVerified || 0).toLocaleString()}</p>
                 </div>
 
                 <div className="stat-box">
                     <div className="stat-icon-box">📊</div>
                     <h3>Utilization Rate</h3>
-                    <p className="stat-number">82%</p>
+                    <p className="stat-number">{Number(transparency?.utilizationRate || 0).toFixed(0)}%</p>
                 </div>
             </div>
 
@@ -255,19 +227,19 @@ const CitizenPage = () => {
                         <div className="chart-bar-container">
                             <div className="chart-label">
                                 <span>Utilized</span>
-                                <span>82%</span>
+                                <span>{Number(transparency?.utilizationRate || 0).toFixed(0)}%</span>
                             </div>
                             <div className="progress-bar">
-                                <div className="progress-fill utilized" style={{ width: '82%' }}></div>
+                                <div className="progress-fill utilized" style={{ width: `${Number(transparency?.utilizationRate || 0).toFixed(0)}%` }}></div>
                             </div>
                         </div>
                         <div className="chart-bar-container">
                             <div className="chart-label">
                                 <span>In Escrow</span>
-                                <span>18%</span>
+                                <span>{(100 - Number(transparency?.utilizationRate || 0)).toFixed(0)}%</span>
                             </div>
                             <div className="progress-bar">
-                                <div className="progress-fill escrow" style={{ width: '18%' }}></div>
+                                <div className="progress-fill escrow" style={{ width: `${(100 - Number(transparency?.utilizationRate || 0)).toFixed(0)}%` }}></div>
                             </div>
                         </div>
                     </div>
@@ -276,42 +248,22 @@ const CitizenPage = () => {
                 <div className="dashboard-card">
                     <h3 className="card-title">Category Distribution</h3>
                     <div className="category-list">
-                        <div className="category-item">
-                            <div className="category-info">
-                                <span>Water</span>
-                                <span>35%</span>
-                            </div>
-                            <div className="progress-bar small">
-                                <div className="progress-fill water" style={{ width: '35%' }}></div>
-                            </div>
-                        </div>
-                        <div className="category-item">
-                            <div className="category-info">
-                                <span>Education</span>
-                                <span>28%</span>
-                            </div>
-                            <div className="progress-bar small">
-                                <div className="progress-fill education" style={{ width: '28%' }}></div>
-                            </div>
-                        </div>
-                        <div className="category-item">
-                            <div className="category-info">
-                                <span>Health</span>
-                                <span>22%</span>
-                            </div>
-                            <div className="progress-bar small">
-                                <div className="progress-fill health" style={{ width: '22%' }}></div>
-                            </div>
-                        </div>
-                        <div className="category-item">
-                            <div className="category-info">
-                                <span>Infrastructure</span>
-                                <span>15%</span>
-                            </div>
-                            <div className="progress-bar small">
-                                <div className="progress-fill infrastructure" style={{ width: '15%' }}></div>
-                            </div>
-                        </div>
+                        {(Array.isArray(transparency?.categoryDistribution) ? transparency.categoryDistribution : []).slice(0, 6).map((c) => {
+                            const percent = Number(c?.percent || 0);
+                            const label = c?.category || 'Other';
+                            const cls = String(label).toLowerCase().replace(/\s+/g, '');
+                            return (
+                                <div className="category-item" key={label}>
+                                    <div className="category-info">
+                                        <span>{label}</span>
+                                        <span>{percent.toFixed(0)}%</span>
+                                    </div>
+                                    <div className="progress-bar small">
+                                        <div className={`progress-fill ${cls}`} style={{ width: `${percent.toFixed(0)}%` }}></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
@@ -363,7 +315,7 @@ const CitizenPage = () => {
                                     <h3>{project.title}</h3>
                                     <p className="location">📍 {project.location}</p>
                                 </div>
-                                <span className={`category-tag ${project.category.toLowerCase()}`}>
+                                <span className={`category-tag ${String(project.category || '').toLowerCase()}`}>
                                     {project.category}
                                 </span>
                             </div>
@@ -382,11 +334,11 @@ const CitizenPage = () => {
                             <div className="project-stats">
                                 <div>
                                     <span className="stat-label">Amount</span>
-                                    <p className="stat-value">{project.amount}</p>
+                                    <p className="stat-value">₹{Number(project.amountInr || 0).toLocaleString()}</p>
                                 </div>
                                 <div>
                                     <span className="stat-label">Donors</span>
-                                    <p className="stat-value">{project.donors}</p>
+                                    <p className="stat-value">{Number(project.donors || 0).toLocaleString()}</p>
                                 </div>
                             </div>
                         </div>
@@ -545,7 +497,7 @@ const CitizenPage = () => {
                                 }
 
                                 try {
-                                    const response = await fetch('http://localhost:8080/api/community-needs', {
+                                    const response = await fetch(`${API_URL}/api/community-needs`, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({

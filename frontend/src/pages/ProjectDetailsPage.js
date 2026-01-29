@@ -2,83 +2,48 @@ import React from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import './CitizenPage.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+
 const ProjectDetailsPage = () => {
     const navigate = useNavigate();
     const { projectId } = useParams();
     const location = useLocation();
-
-    const projects = [
-        {
-            id: '0',
-            title: "Clean Water Initiative",
-            location: "Maharashtra",
-            category: "Water",
-            progress: 75,
-            amount: "₹12,50,000",
-            donors: "5,000",
-            description:
-                "Installing community RO systems and repairing pipelines to provide safe drinking water in remote villages."
-        },
-        {
-            id: '1',
-            title: "Rural Education Program",
-            location: "Bihar",
-            category: "Education",
-            progress: 45,
-            amount: "₹8,00,000",
-            donors: "2,500",
-            description:
-                "Upgrading classrooms, providing learning materials, and enabling after-school tutoring for rural students."
-        },
-        {
-            id: '2',
-            title: "Health Camp Network",
-            location: "Rajasthan",
-            category: "Health",
-            progress: 90,
-            amount: "₹6,50,000",
-            donors: "8,000",
-            description:
-                "Recurring mobile health camps with diagnostics, medicines, and specialist consultations across districts."
-        },
-        {
-            id: '3',
-            title: "Solar Village Project",
-            location: "Gujarat",
-            category: "Infrastructure",
-            progress: 30,
-            amount: "₹15,00,000",
-            donors: "3,000",
-            description:
-                "Deploying solar microgrids, streetlights, and basic electrification for community facilities."
-        },
-        {
-            id: '4',
-            title: "Women Empowerment",
-            location: "Uttar Pradesh",
-            category: "Education",
-            progress: 65,
-            amount: "₹4,20,000",
-            donors: "1,500",
-            description:
-                "Skill training, micro-entrepreneur support, and awareness programs focused on women-led livelihoods."
-        },
-        {
-            id: '5',
-            title: "Tribal Healthcare",
-            location: "Jharkhand",
-            category: "Health",
-            progress: 55,
-            amount: "₹9,80,000",
-            donors: "6,000",
-            description:
-                "Primary healthcare outreach and preventive care programs in tribal areas with local health workers."
-        }
-    ];
-
     const projectFromState = location?.state?.project;
-    const projectFromList = projects.find(p => p.id === String(projectId));
-    const project = projectFromState || projectFromList;
+    const [project, setProject] = React.useState(projectFromState || null);
+    const [projectLoading, setProjectLoading] = React.useState(false);
+    const [projectError, setProjectError] = React.useState('');
+
+    React.useEffect(() => {
+        if (project) return;
+        if (!projectId) return;
+        const load = async () => {
+            setProjectLoading(true);
+            setProjectError('');
+            try {
+                const res = await fetch(`${API_URL}/api/scheme/${projectId}`);
+                if (!res.ok) {
+                    setProjectError('Failed to load project details');
+                    return;
+                }
+                const scheme = await res.json();
+                setProject({
+                    id: scheme.schemeId,
+                    title: scheme.schemeName,
+                    location: scheme.region,
+                    category: scheme.category,
+                    progress: 0,
+                    amountInr: scheme.budget,
+                    donors: 0,
+                    description: scheme.description
+                });
+            } catch (err) {
+                setProjectError(err?.message || 'Failed to load project details');
+            } finally {
+                setProjectLoading(false);
+            }
+        };
+        load();
+    }, [project, projectId]);
 
     const [commentText, setCommentText] = React.useState('');
     const [commentImage, setCommentImage] = React.useState(null);
@@ -177,7 +142,7 @@ const ProjectDetailsPage = () => {
 
         setStatusMessage('Sending OTP...');
         try {
-            const response = await fetch('http://localhost:8080/api/otp/send', {
+            const response = await fetch(`${API_URL}/api/otp/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
@@ -185,7 +150,8 @@ const ProjectDetailsPage = () => {
             if (response.ok) {
                 setIsOtpSent(true);
                 setTimer(30);
-                setStatusMessage('OTP sent. Please check your email.');
+                const text = await response.text().catch(() => '');
+                setStatusMessage(text || 'OTP sent. Please check your email.');
             } else {
                 const text = await response.text().catch(() => '');
                 setStatusMessage(text || 'Failed to send OTP. Please try again.');
@@ -211,14 +177,14 @@ const ProjectDetailsPage = () => {
 
         setStatusMessage('Verifying OTP...');
         try {
-            const response = await fetch('http://localhost:8080/api/otp/verify', {
+            const response = await fetch(`${API_URL}/api/otp/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, otp })
             });
             if (response.ok) {
                 setIsOtpVerified(true);
-                setStatusMessage('Email verified. You can post a comment now.');
+                setStatusMessage('');
             } else {
                 const text = await response.text().catch(() => '');
                 setStatusMessage(text || 'Invalid or expired OTP.');
@@ -325,6 +291,25 @@ const ProjectDetailsPage = () => {
         });
     };
 
+    if (projectLoading) {
+        return (
+            <div className="citizen-container">
+                <nav className="citizen-nav">
+                    <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => navigate('/citizen')}>
+                        <span className="logo-icon">🔗</span>
+                        <h2>Trust<span className="highlight">Chain</span></h2>
+                    </div>
+                    <button className="nav-login-btn" onClick={() => navigate('/citizen')}>Back</button>
+                </nav>
+                <div className="project-details-wrap">
+                    <div className="project-details-card">
+                        <h2 className="project-details-title">Loading...</h2>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (!project) {
         return (
             <div className="citizen-container">
@@ -338,7 +323,7 @@ const ProjectDetailsPage = () => {
                 <div className="project-details-wrap">
                     <div className="project-details-card">
                         <h2 className="project-details-title">Project not found</h2>
-                        <p className="project-details-subtitle">Please go back and choose a project.</p>
+                        <p className="project-details-subtitle">{projectError || 'Please go back and choose a project.'}</p>
                         <button className="btn-primary" onClick={() => navigate('/citizen')} style={{ marginTop: '16px' }}>
                             Go to Citizen Page
                         </button>
@@ -372,11 +357,11 @@ const ProjectDetailsPage = () => {
                         <div className="project-details-metrics">
                             <div className="project-details-metric">
                                 <span className="metric-label">Amount</span>
-                                <span className="metric-value">{project.amount}</span>
+                                <span className="metric-value">₹{Number(project.amountInr || 0).toLocaleString()}</span>
                             </div>
                             <div className="project-details-metric">
                                 <span className="metric-label">Donors</span>
-                                <span className="metric-value">{project.donors}</span>
+                                <span className="metric-value">{Number(project.donors || 0).toLocaleString()}</span>
                             </div>
                         </div>
                     </div>

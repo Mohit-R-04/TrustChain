@@ -1,33 +1,36 @@
 package com.trustchain.backend.controller;
 
 import com.trustchain.backend.model.CommunityNeed;
-import com.trustchain.backend.repository.CommunityNeedRepository;
+import com.trustchain.backend.service.CommunityNeedService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/community-needs")
 public class CommunityNeedController {
 
     @Autowired
-    private CommunityNeedRepository communityNeedRepository;
+    private CommunityNeedService communityNeedService;
 
     @GetMapping
     public ResponseEntity<List<CommunityNeed>> getAllNeeds() {
-        List<CommunityNeed> needs = communityNeedRepository.findAll();
-        return ResponseEntity.ok(needs);
+        return ResponseEntity.ok(communityNeedService.listNeeds());
     }
 
     @PostMapping
     public ResponseEntity<CommunityNeed> createNeed(@RequestBody CommunityNeed communityNeed) {
-        communityNeed.setStatus("open");
-        communityNeed.setCreatedAt(LocalDateTime.now());
-        CommunityNeed saved = communityNeedRepository.save(communityNeed);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(communityNeedService.createNeed(communityNeed));
+    }
+
+    @PostMapping("/{needId}/vote")
+    public ResponseEntity<CommunityNeed> vote(@PathVariable UUID needId, @RequestBody Map<String, Object> body) {
+        String voter = body.get("email") != null ? body.get("email").toString() : "";
+        int value = body.get("value") instanceof Number ? ((Number) body.get("value")).intValue() : 0;
+        return ResponseEntity.ok(communityNeedService.vote(needId, voter, value));
     }
 }
-

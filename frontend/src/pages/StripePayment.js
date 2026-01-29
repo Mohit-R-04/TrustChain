@@ -142,7 +142,7 @@ const StripePayment = () => {
             }
 
             const token = await getToken();
-            const response = await fetch(`${API_URL}/api/donor/donate`, {
+            const response = await fetch(`${API_URL}/api/donation`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

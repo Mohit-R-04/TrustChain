@@ -34,6 +34,12 @@ public class CommunityNeed {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "upvotes")
+    private Integer upvotes;
+
+    @Column(name = "downvotes")
+    private Integer downvotes;
+
     public CommunityNeed() {
     }
 
@@ -100,5 +106,20 @@ public class CommunityNeed {
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
-}
 
+    public Integer getUpvotes() {
+        return upvotes;
+    }
+
+    public void setUpvotes(Integer upvotes) {
+        this.upvotes = upvotes;
+    }
+
+    public Integer getDownvotes() {
+        return downvotes;
+    }
+
+    public void setDownvotes(Integer downvotes) {
+        this.downvotes = downvotes;
+    }
+}

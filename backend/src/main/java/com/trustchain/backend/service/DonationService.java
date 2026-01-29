@@ -3,10 +3,12 @@ package com.trustchain.backend.service;
 import com.trustchain.backend.dto.DonationRequest;
 import com.trustchain.backend.model.Donation;
 import com.trustchain.backend.model.Donor;
+import com.trustchain.backend.model.Government;
 import com.trustchain.backend.model.Scheme;
 import com.trustchain.backend.config.BlockchainProperties;
 import com.trustchain.backend.repository.DonationRepository;
 import com.trustchain.backend.repository.DonorRepository;
+import com.trustchain.backend.repository.GovernmentRepository;
 import com.trustchain.backend.repository.SchemeRepository;
 import com.trustchain.backend.service.blockchain.BlockchainIdUtil;
 import com.trustchain.backend.service.blockchain.DemoEscrowLedgerService;
@@ -17,9 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -35,6 +39,9 @@ public class DonationService {
 
     @Autowired
     private DonorRepository donorRepository;
+
+    @Autowired
+    private GovernmentRepository governmentRepository;
 
     @Autowired
     private PaymentService paymentService;
@@ -60,7 +67,14 @@ public class DonationService {
     }
 
     public List<Donation> getDonationsByUserId(String userId) {
-        return donationRepository.findByDonor_UserId(userId);
+        List<Donation> out = new ArrayList<>();
+        out.addAll(donationRepository.findByDonor_UserId(userId));
+        out.addAll(donationRepository.findByGovernment_UserId(userId));
+        return out.stream()
+                .collect(Collectors.toMap(Donation::getDonationId, d -> d, (a, b) -> a))
+                .values()
+                .stream()
+                .toList();
     }
 
     public List<Donation> getAllDonations() {
@@ -73,21 +87,8 @@ public class DonationService {
 
     @Transactional
     public Donation processDonation(DonationRequest request, String donorAuthId) {
-        Scheme scheme = null;
-        if (request.getSchemeId() != null) {
-            scheme = schemeRepository.findById(request.getSchemeId()).orElse(null);
-        }
-        if (scheme == null && request.getSchemeName() != null) {
-            java.util.List<Scheme> matches = schemeRepository.findAllBySchemeName(request.getSchemeName());
-            if (matches != null && !matches.isEmpty()) {
-                scheme = matches.get(0);
-            }
-        }
-        if (scheme == null) {
-            throw new RuntimeException("Scheme not found");
-        }
+        Scheme scheme = resolveScheme(request);
 
-        // Ensure donor exists
         Donor donor = donorRepository.findByUserId(donorAuthId)
                 .orElseGet(() -> {
                     Donor newDonor = new Donor();
@@ -97,7 +98,6 @@ public class DonationService {
                     return donorRepository.save(newDonor);
                 });
 
-        // Simulate payment
         boolean paymentSuccess = paymentService.processPayment(request.getAmount(), "INR", request.getPaymentToken());
         if (!paymentSuccess) {
             throw new RuntimeException("Payment failed");
@@ -106,22 +106,78 @@ public class DonationService {
         Donation donation = new Donation();
         donation.setScheme(scheme);
         donation.setDonor(donor);
+        donation.setGovernment(null);
         donation.setAmount(request.getAmount());
         donation.setTimestamp(java.time.LocalDateTime.now());
         donation.setTransactionRef(paymentService.generateTransactionReference());
         donation.setStatus("COMPLETED");
         Donation saved = donationRepository.save(donation);
 
-        if (blockchainProperties != null && blockchainProperties.isEnabled() && blockchainProperties.isDemoMode() && demoLedger != null) {
-            BigDecimal inr = BigDecimal.valueOf(request.getAmount() != null ? request.getAmount() : 0d);
-            if (inr.signum() > 0) {
-                BigInteger amountWei = inr.multiply(new BigDecimal("100000000000")).toBigInteger();
-                BigInteger schemeId = BlockchainIdUtil.uuidToUint256(scheme.getSchemeId());
-                demoLedger.recordDeposit(scheme.getSchemeId(), schemeId, "0x0000000000000000000000000000000000000000", amountWei);
-            }
-        }
+        recordDemoDepositIfEnabled(scheme, request.getAmount());
 
         return saved;
+    }
+
+    @Transactional
+    public Donation processDonationAsGovernment(DonationRequest request, String govtAuthId) {
+        Scheme scheme = resolveScheme(request);
+
+        Government government = governmentRepository.findByUserId(govtAuthId)
+                .orElseGet(() -> {
+                    Government g = new Government();
+                    g.setUserId(govtAuthId);
+                    g.setGovtName("Government " + govtAuthId.substring(0, 5));
+                    return governmentRepository.save(g);
+                });
+
+        boolean paymentSuccess = paymentService.processPayment(request.getAmount(), "INR", request.getPaymentToken());
+        if (!paymentSuccess) {
+            throw new RuntimeException("Payment failed");
+        }
+
+        Donation donation = new Donation();
+        donation.setScheme(scheme);
+        donation.setDonor(null);
+        donation.setGovernment(government);
+        donation.setAmount(request.getAmount());
+        donation.setTimestamp(java.time.LocalDateTime.now());
+        donation.setTransactionRef(paymentService.generateTransactionReference());
+        donation.setStatus("COMPLETED");
+        Donation saved = donationRepository.save(donation);
+
+        recordDemoDepositIfEnabled(scheme, request.getAmount());
+
+        return saved;
+    }
+
+    private Scheme resolveScheme(DonationRequest request) {
+        Scheme scheme = null;
+        if (request.getSchemeId() != null) {
+            scheme = schemeRepository.findById(request.getSchemeId()).orElse(null);
+        }
+        if (scheme == null && request.getSchemeName() != null) {
+            List<Scheme> matches = schemeRepository.findAllBySchemeName(request.getSchemeName());
+            if (matches != null && !matches.isEmpty()) {
+                scheme = matches.get(0);
+            }
+        }
+        if (scheme == null) {
+            throw new RuntimeException("Scheme not found");
+        }
+        return scheme;
+    }
+
+    private void recordDemoDepositIfEnabled(Scheme scheme, Double amountInr) {
+        if (blockchainProperties == null || !blockchainProperties.isEnabled() || !blockchainProperties.isDemoMode() || demoLedger == null) {
+            return;
+        }
+        BigDecimal inr = BigDecimal.valueOf(amountInr != null ? amountInr : 0d);
+        if (inr.signum() <= 0) {
+            return;
+        }
+        BigInteger amountWei = inr.multiply(new BigDecimal("100000000000")).toBigInteger();
+        BigInteger schemeId = BlockchainIdUtil.uuidToUint256(scheme.getSchemeId());
+        demoLedger.recordDeposit(scheme.getSchemeId(), schemeId, "0x0000000000000000000000000000000000000000", amountWei);
     }
 
     public Donation createDonation(Donation donation) {

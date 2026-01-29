@@ -59,6 +59,10 @@ public class SecurityConfig {
                                                 // Scheme endpoints - Publicly readable
                                                 .requestMatchers(HttpMethod.GET, "/api/scheme/**").permitAll()
 
+                                                // Community needs - Publicly accessible (posted via OTP verification in UI)
+                                                .requestMatchers(HttpMethod.GET, "/api/community-needs/**").permitAll()
+                                                .requestMatchers(HttpMethod.POST, "/api/community-needs/**").permitAll()
+
                                                 // Allow NGO user details fetch for any authenticated user (fixes 403 on dashboard load)
                                                 .requestMatchers("/api/ngo/user/**").authenticated()
 

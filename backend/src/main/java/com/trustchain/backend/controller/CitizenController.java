@@ -1,9 +1,12 @@
 package com.trustchain.backend.controller;
 
+import com.trustchain.backend.service.CitizenPublicService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -13,30 +16,21 @@ import java.util.Map;
 @RequestMapping("/api/citizen")
 public class CitizenController {
 
+    @Autowired
+    private CitizenPublicService citizenPublicService;
+
     @GetMapping("/transparency")
     public ResponseEntity<Map<String, Object>> getTransparencyData() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("fundsInEscrow", "₹23,000,000");
-        response.put("activeSchemes", 156);
-        response.put("verifiedNGOs", 428);
-        response.put("ipfsDocuments", 12847);
-        response.put("transparentPayments", 8934);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(citizenPublicService.getTransparencyData());
     }
 
     @GetMapping("/projects")
     public ResponseEntity<Map<String, Object>> getPublicProjects() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("projects", new Object[] {});
-        response.put("total", 0);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(citizenPublicService.getPublicProjects());
     }
 
     @GetMapping("/transactions")
     public ResponseEntity<Map<String, Object>> getPublicTransactions() {
-        Map<String, Object> response = new HashMap<>();
-        response.put("transactions", new Object[] {});
-        response.put("total", 0);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("transactions", new Object[] {}, "total", 0));
     }
 }

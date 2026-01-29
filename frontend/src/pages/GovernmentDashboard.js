@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import DashboardHeader from '../components/DashboardHeader';
 import CreateSchemeForm from '../components/CreateSchemeForm';
+import DonationForm from '../components/DonationForm';
 import BlockchainPanel from '../components/BlockchainPanel';
 import './DashboardPage.css';
 
@@ -13,6 +14,17 @@ const GovernmentDashboard = () => {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showMonitorModal, setShowMonitorModal] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
+    const [showDonationModal, setShowDonationModal] = useState(false);
+    const [showCommunityNeedsModal, setShowCommunityNeedsModal] = useState(false);
+    const [showSchemeDetailsModal, setShowSchemeDetailsModal] = useState(false);
+    const [selectedSchemeId, setSelectedSchemeId] = useState(null);
+    const [schemeDetails, setSchemeDetails] = useState(null);
+    const [schemeDetailsLoading, setSchemeDetailsLoading] = useState(false);
+    const [schemeDetailsError, setSchemeDetailsError] = useState(null);
+    const [schemeBalance, setSchemeBalance] = useState(null);
+    const [communityNeeds, setCommunityNeeds] = useState([]);
+    const [communityNeedsLoading, setCommunityNeedsLoading] = useState(false);
+    const [communityNeedsError, setCommunityNeedsError] = useState(null);
     
     const [stats, setStats] = useState({
         totalSchemes: 0,
@@ -28,6 +40,11 @@ const GovernmentDashboard = () => {
             fetchDashboardData();
         }
     }, [user]);
+
+    useEffect(() => {
+        if (!showSchemeDetailsModal || !selectedSchemeId) return;
+        fetchSchemeDetails(selectedSchemeId);
+    }, [showSchemeDetailsModal, selectedSchemeId]);
 
     const fetchDashboardData = async () => {
         try {
@@ -55,6 +72,71 @@ const GovernmentDashboard = () => {
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+        }
+    };
+
+    const fetchSchemeDetails = async (schemeId) => {
+        setSchemeDetailsLoading(true);
+        setSchemeDetailsError(null);
+        setSchemeDetails(null);
+        setSchemeBalance(null);
+        try {
+            const schemeRes = await fetch(`${API_URL}/api/scheme/${schemeId}`);
+            if (!schemeRes.ok) {
+                setSchemeDetailsError('Failed to load scheme details');
+                return;
+            }
+            const schemeData = await schemeRes.json();
+            setSchemeDetails(schemeData);
+
+            const balRes = await fetch(`${API_URL}/api/public/blockchain/schemes/${schemeId}/balance`);
+            if (balRes.ok) {
+                const balData = await balRes.json();
+                setSchemeBalance(balData);
+            }
+        } catch (err) {
+            setSchemeDetailsError(err?.message || 'Failed to load scheme details');
+        } finally {
+            setSchemeDetailsLoading(false);
+        }
+    };
+
+    const fetchCommunityNeeds = async () => {
+        setCommunityNeedsLoading(true);
+        setCommunityNeedsError(null);
+        try {
+            const res = await fetch(`${API_URL}/api/community-needs`);
+            if (!res.ok) {
+                setCommunityNeedsError('Failed to load community needs');
+                return;
+            }
+            const data = await res.json();
+            setCommunityNeeds(Array.isArray(data) ? data : []);
+        } catch (err) {
+            setCommunityNeedsError(err?.message || 'Failed to load community needs');
+        } finally {
+            setCommunityNeedsLoading(false);
+        }
+    };
+
+    const voteOnNeed = async (needId, value) => {
+        const voterEmail =
+            user?.primaryEmailAddress?.emailAddress ||
+            user?.emailAddresses?.[0]?.emailAddress ||
+            `${user?.id || 'government'}@trustchain.local`;
+
+        try {
+            const res = await fetch(`${API_URL}/api/community-needs/${needId}/vote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: voterEmail, value })
+            });
+            if (!res.ok) return;
+            const updated = await res.json();
+            setCommunityNeeds((prev) =>
+                prev.map((n) => (n.needId === updated.needId ? updated : n))
+            );
+        } catch {
         }
     };
 
@@ -98,6 +180,12 @@ const GovernmentDashboard = () => {
                         >
                             Create New Scheme
                         </button>
+                        <button
+                            className="action-btn primary"
+                            onClick={() => setShowDonationModal(true)}
+                        >
+                            Donate to a Scheme
+                        </button>
                         <button 
                             className="action-btn secondary"
                             onClick={() => {
@@ -114,13 +202,28 @@ const GovernmentDashboard = () => {
                                 setShowApproveModal(true);
                             }}
                         >
-                            Approve Projects
+                            Projects
+                        </button>
+                        <button
+                            className="action-btn secondary"
+                            onClick={() => {
+                                fetchCommunityNeeds();
+                                setShowCommunityNeedsModal(true);
+                            }}
+                        >
+                            Community Needs
                         </button>
                     </div>
                 </div>
 
                 <BlockchainPanel />
             </div>
+
+            {showDonationModal && (
+                <DonationForm
+                    onClose={() => setShowDonationModal(false)}
+                />
+            )}
 
             {/* Create Scheme Modal */}
             {showCreateForm && (
@@ -181,7 +284,7 @@ const GovernmentDashboard = () => {
                 <div className="modal-overlay">
                     <div className="modal-content large-modal">
                         <div className="modal-header">
-                            <h3>Approve Projects</h3>
+                            <h3>Projects</h3>
                             <button className="close-btn" onClick={() => setShowApproveModal(false)}>×</button>
                         </div>
                         <div className="table-container">
@@ -191,7 +294,7 @@ const GovernmentDashboard = () => {
                                 <table className="data-table">
                                     <thead>
                                         <tr>
-                                            <th>Scheme Name</th>
+                                            <th>Project Name</th>
                                             <th>Budget</th>
                                             <th>Region</th>
                                             <th>Status</th>
@@ -210,7 +313,133 @@ const GovernmentDashboard = () => {
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <button className="action-btn small">View Details</button>
+                                                    <button
+                                                        className="action-btn small"
+                                                        onClick={() => {
+                                                            setSelectedSchemeId(scheme.schemeId);
+                                                            setShowSchemeDetailsModal(true);
+                                                        }}
+                                                    >
+                                                        View Details
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showSchemeDetailsModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content large-modal">
+                        <div className="modal-header">
+                            <h3>Scheme Details</h3>
+                            <button
+                                className="close-btn"
+                                onClick={() => {
+                                    setShowSchemeDetailsModal(false);
+                                    setSelectedSchemeId(null);
+                                    setSchemeDetails(null);
+                                    setSchemeBalance(null);
+                                    setSchemeDetailsError(null);
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="table-container">
+                            {schemeDetailsLoading ? (
+                                <p className="empty-state">Loading...</p>
+                            ) : schemeDetailsError ? (
+                                <p className="empty-state">{schemeDetailsError}</p>
+                            ) : !schemeDetails ? (
+                                <p className="empty-state">No scheme details found.</p>
+                            ) : (
+                                <div style={{ display: 'grid', gap: '12px' }}>
+                                    <div style={{ display: 'grid', gap: '6px' }}>
+                                        <div><strong>Name:</strong> {schemeDetails.schemeName}</div>
+                                        <div><strong>Category:</strong> {schemeDetails.category || '—'}</div>
+                                        <div><strong>Region:</strong> {schemeDetails.region || '—'}</div>
+                                        <div><strong>Budget:</strong> ₹{(schemeDetails.budget || 0).toLocaleString()}</div>
+                                        <div><strong>Status:</strong> {schemeDetails.isFinished ? 'Finished' : 'Active'}</div>
+                                        <div><strong>Start Date:</strong> {schemeDetails.startDate || '—'}</div>
+                                        <div><strong>End Date:</strong> {schemeDetails.endDate || '—'}</div>
+                                        <div><strong>Expected Beneficiaries:</strong> {schemeDetails.expectedBeneficiaries ?? '—'}</div>
+                                        <div><strong>Milestones:</strong> {schemeDetails.milestoneCount ?? '—'}</div>
+                                    </div>
+                                    <div style={{ display: 'grid', gap: '6px' }}>
+                                        <div><strong>Description:</strong></div>
+                                        <div style={{ whiteSpace: 'pre-wrap' }}>{schemeDetails.description || '—'}</div>
+                                    </div>
+                                    {schemeBalance && (
+                                        <div style={{ display: 'grid', gap: '6px' }}>
+                                            <div><strong>Escrow Balance (Demo/Chain):</strong> {schemeBalance.balancePol} POL</div>
+                                            <div className="monospace"><strong>Scheme UUID:</strong> {schemeDetails.schemeId}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showCommunityNeedsModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content large-modal">
+                        <div className="modal-header">
+                            <h3>Community Needs</h3>
+                            <button className="close-btn" onClick={() => setShowCommunityNeedsModal(false)}>×</button>
+                        </div>
+                        <div className="table-container">
+                            {communityNeedsLoading ? (
+                                <p className="empty-state">Loading...</p>
+                            ) : communityNeedsError ? (
+                                <p className="empty-state">{communityNeedsError}</p>
+                            ) : communityNeeds.length === 0 ? (
+                                <p className="empty-state">No community needs found.</p>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Category</th>
+                                            <th>Location</th>
+                                            <th>Status</th>
+                                            <th>Votes</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {communityNeeds.map((n) => (
+                                            <tr key={n.needId}>
+                                                <td>{n.title}</td>
+                                                <td>{n.category}</td>
+                                                <td>{n.location}</td>
+                                                <td>
+                                                    <span className={`status-badge ${String(n.status || '').toLowerCase()}`}>
+                                                        {n.status}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span style={{ display: 'inline-flex', gap: '10px', alignItems: 'center' }}>
+                                                        <span>↑ {n.upvotes || 0}</span>
+                                                        <span>↓ {n.downvotes || 0}</span>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span style={{ display: 'inline-flex', gap: '8px' }}>
+                                                        <button className="action-btn small" onClick={() => voteOnNeed(n.needId, 1)}>
+                                                            Upvote
+                                                        </button>
+                                                        <button className="action-btn small" onClick={() => voteOnNeed(n.needId, -1)}>
+                                                            Downvote
+                                                        </button>
+                                                    </span>
                                                 </td>
                                             </tr>
                                         ))}
