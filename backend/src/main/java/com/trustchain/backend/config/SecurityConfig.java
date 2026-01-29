@@ -59,6 +59,9 @@ public class SecurityConfig {
                                                 // Scheme endpoints - Publicly readable
                                                 .requestMatchers(HttpMethod.GET, "/api/scheme/**").permitAll()
 
+                                                // Vendor endpoints - allow authenticated reads (needed for NGO portal vendor selection)
+                                                .requestMatchers(HttpMethod.GET, "/api/vendor/**").authenticated()
+
                                                 // Allow NGO user details fetch for any authenticated user (fixes 403 on dashboard load)
                                                 .requestMatchers("/api/ngo/user/**").authenticated()
 
