@@ -100,13 +100,19 @@ const GovernmentDashboard = () => {
                         </button>
                         <button 
                             className="action-btn secondary"
-                            onClick={() => setShowMonitorModal(true)}
+                            onClick={() => {
+                                fetchDashboardData();
+                                setShowMonitorModal(true);
+                            }}
                         >
                             Monitor Funds
                         </button>
                         <button 
                             className="action-btn secondary"
-                            onClick={() => setShowApproveModal(true)}
+                            onClick={() => {
+                                fetchDashboardData();
+                                setShowApproveModal(true);
+                            }}
                         >
                             Approve Projects
                         </button>
