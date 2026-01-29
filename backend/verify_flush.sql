@@ -17,6 +17,14 @@ SELECT 'manage', COUNT(*) FROM manage
 UNION ALL
 SELECT 'scheme', COUNT(*) FROM scheme
 UNION ALL
+SELECT 'blockchain_event', COUNT(*) FROM blockchain_event
+UNION ALL
+SELECT 'demo_donor_contribution', COUNT(*) FROM demo_donor_contribution
+UNION ALL
+SELECT 'demo_scheme_balance', COUNT(*) FROM demo_scheme_balance
+UNION ALL
+SELECT 'demo_escrow_state', COUNT(*) FROM demo_escrow_state
+UNION ALL
 SELECT 'kyc_records', COUNT(*) FROM kyc_records
 UNION ALL
 SELECT 'pan_records', COUNT(*) FROM pan_records
@@ -30,4 +38,6 @@ UNION ALL
 SELECT 'auditor', COUNT(*) FROM auditor
 UNION ALL
 SELECT 'government', COUNT(*) FROM government
+UNION ALL
+SELECT 'users', COUNT(*) FROM users
 ORDER BY table_name;

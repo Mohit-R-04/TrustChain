@@ -15,6 +15,10 @@ TRUNCATE TABLE transaction CASCADE;
 TRUNCATE TABLE community_need CASCADE;
 TRUNCATE TABLE manage CASCADE;
 TRUNCATE TABLE scheme CASCADE;
+TRUNCATE TABLE blockchain_event CASCADE;
+TRUNCATE TABLE demo_donor_contribution CASCADE;
+TRUNCATE TABLE demo_scheme_balance CASCADE;
+TRUNCATE TABLE demo_escrow_state CASCADE;
 TRUNCATE TABLE kyc_records CASCADE;
 TRUNCATE TABLE pan_records CASCADE;
 TRUNCATE TABLE donor CASCADE;
@@ -22,7 +26,7 @@ TRUNCATE TABLE ngo CASCADE;
 TRUNCATE TABLE vendor CASCADE;
 TRUNCATE TABLE auditor CASCADE;
 TRUNCATE TABLE government CASCADE;
-TRUNCATE TABLE user_role CASCADE;
+TRUNCATE TABLE users CASCADE;
 
 -- Re-enable triggers
 SET session_replication_role = 'origin';
