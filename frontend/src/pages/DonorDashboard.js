@@ -13,6 +13,7 @@ const DonorDashboard = () => {
     const [showDonationModal, setShowDonationModal] = useState(false);
     const [showProjectsModal, setShowProjectsModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [showInvoicesModal, setShowInvoicesModal] = useState(false);
     
     const [stats, setStats] = useState({
         totalDonations: 0,
@@ -22,6 +23,8 @@ const DonorDashboard = () => {
     
     const [donations, setDonations] = useState([]);
     const [schemes, setSchemes] = useState([]);
+    const [invoices, setInvoices] = useState([]);
+    const [invoicesError, setInvoicesError] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -65,6 +68,26 @@ const DonorDashboard = () => {
     const handleDonationSuccess = () => {
         fetchDashboardData();
         setShowDonationModal(false);
+    };
+
+    const fetchInvoices = async () => {
+        try {
+            const token = await getToken();
+            const headers = { 'Authorization': `Bearer ${token}` };
+            const res = await fetch(`${API_URL}/api/invoice/visible`, { headers });
+            if (res.ok) {
+                const data = await res.json();
+                setInvoices(Array.isArray(data) ? data : []);
+                setInvoicesError(null);
+            } else {
+                setInvoices([]);
+                setInvoicesError(`Failed to fetch invoices (Status: ${res.status})`);
+            }
+        } catch (e) {
+            console.error('Error fetching invoices:', e);
+            setInvoices([]);
+            setInvoicesError('Failed to fetch invoices');
+        }
     };
 
     return (
@@ -112,6 +135,15 @@ const DonorDashboard = () => {
                             onClick={() => setShowProjectsModal(true)}
                         >
                             View Projects
+                        </button>
+                        <button
+                            className="action-btn secondary"
+                            onClick={() => {
+                                fetchInvoices();
+                                setShowInvoicesModal(true);
+                            }}
+                        >
+                            View Invoices
                         </button>
                         <button 
                             className="action-btn secondary"
@@ -209,6 +241,58 @@ const DonorDashboard = () => {
                                                 </td>
                                             </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showInvoicesModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content large-modal">
+                        <div className="modal-header">
+                            <h3>Invoices</h3>
+                            <button className="close-btn" onClick={() => setShowInvoicesModal(false)}>×</button>
+                        </div>
+                        <div className="table-container">
+                            {invoices.length === 0 ? (
+                                <p className="empty-state">{invoicesError || 'No invoices found.'}</p>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scheme</th>
+                                            <th>NGO</th>
+                                            <th>Vendor</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>IPFS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {invoices.map(inv => {
+                                            const status = (inv.status || '').toUpperCase();
+                                            const statusClass = status === 'ACCEPTED' ? 'accepted' : status === 'REJECTED' ? 'rejected' : status === 'NGO_ACCEPTED' ? 'pending' : 'pending';
+                                            const gatewayBaseRaw = process.env.REACT_APP_IPFS_GATEWAY_BASE || 'https://gateway.pinata.cloud/ipfs/';
+                                            const gatewayBase = gatewayBaseRaw.endsWith('/') ? gatewayBaseRaw : `${gatewayBaseRaw}/`;
+                                            const ipfsUrl = inv.invoiceIpfsHash ? `${gatewayBase}${inv.invoiceIpfsHash}` : null;
+                                            return (
+                                                <tr key={inv.invoiceId}>
+                                                    <td>{inv.manage?.scheme?.schemeName || inv.manage?.scheme?.name || '-'}</td>
+                                                    <td>{inv.manage?.ngo?.name || '-'}</td>
+                                                    <td>{inv.vendor?.name || inv.vendor?.email || '-'}</td>
+                                                    <td>₹{Number(inv.amount || 0).toLocaleString()}</td>
+                                                    <td>
+                                                        <span className={`status-badge ${statusClass}`}>{status || 'PENDING'}</span>
+                                                    </td>
+                                                    <td>
+                                                        {ipfsUrl ? <a href={ipfsUrl} target="_blank" rel="noreferrer">View</a> : '-'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             )}

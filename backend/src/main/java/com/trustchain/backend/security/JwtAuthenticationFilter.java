@@ -49,10 +49,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         try {
+            String uri = request.getRequestURI();
+            boolean isInvoiceUpload = uri != null && uri.startsWith("/api/invoice/upload");
             String authHeader = request.getHeader("Authorization");
-
+            String token = null;
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
+                token = authHeader.substring(7);
+            }
 
                 // Validate token with Clerk
                 if (jwtTokenValidator.validateToken(token)) {
@@ -62,17 +65,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     if (role == null || role.isBlank()) {
                         role = jwtTokenValidator.getRoleFromToken(token);
                     }
+            boolean tokenValid = token != null && !token.isBlank() && jwtTokenValidator.validateToken(token);
+            String tokenParam = null;
 
-                    // Create authentication with role
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userId,
-                            null,
-                            Collections.singletonList(authority));
-
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (!tokenValid && isInvoiceUpload) {
+                tokenParam = request.getParameter("authToken");
+                if (tokenParam != null && !tokenParam.isBlank()) {
+                    token = tokenParam.trim();
                 }
+                tokenValid = token != null && !token.isBlank() && jwtTokenValidator.validateToken(token);
+            }
+
+            if (isInvoiceUpload) {
+                logger.info("Invoice upload auth: uri=" + uri
+                        + ", hasAuthHeader=" + (authHeader != null && !authHeader.isBlank())
+                        + ", hasAuthTokenParam=" + (tokenParam != null && !tokenParam.isBlank())
+                        + ", tokenValid=" + tokenValid
+                        + ", tokenLen=" + (token == null ? 0 : token.length())
+                        + ", tokenDots=" + (token == null ? 0 : token.chars().filter(c -> c == '.').count()));
+            }
+
+            if (tokenValid) {
+                String userId = jwtTokenValidator.getUserIdFromToken(token);
+                String role = jwtTokenValidator.getRoleFromToken(token);
+
+                SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userId,
+                        null,
+                        Collections.singletonList(authority));
+
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
             logger.error("Cannot set user authentication: {}", e);
@@ -83,19 +107,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String resolveRoleFromDatabase(String userId, String email) {
         if (userId != null && !userId.isBlank()) {
-            if (governmentRepository.findByUserId(userId).isPresent()) return "government";
-            if (ngoRepository.findByUserId(userId).isPresent()) return "ngo";
-            if (vendorRepository.findByUserId(userId).isPresent()) return "vendor";
-            if (auditorRepository.findByUserId(userId).isPresent()) return "auditor";
-            if (donorRepository.findByUserId(userId).isPresent()) return "donor";
+            if (governmentRepository.findByUserId(userId).isPresent())
+                return "government";
+            if (ngoRepository.findByUserId(userId).isPresent())
+                return "ngo";
+            if (vendorRepository.findByUserId(userId).isPresent())
+                return "vendor";
+            if (auditorRepository.findByUserId(userId).isPresent())
+                return "auditor";
+            if (donorRepository.findByUserId(userId).isPresent())
+                return "donor";
         }
 
         if (email != null && !email.isBlank()) {
-            if (governmentRepository.findByEmail(email).isPresent()) return "government";
-            if (ngoRepository.findByEmail(email).isPresent()) return "ngo";
-            if (vendorRepository.findByEmail(email).isPresent()) return "vendor";
-            if (auditorRepository.findByEmail(email).isPresent()) return "auditor";
-            if (donorRepository.findByEmail(email).isPresent()) return "donor";
+            if (governmentRepository.findByEmail(email).isPresent())
+                return "government";
+            if (ngoRepository.findByEmail(email).isPresent())
+                return "ngo";
+            if (vendorRepository.findByEmail(email).isPresent())
+                return "vendor";
+            if (auditorRepository.findByEmail(email).isPresent())
+                return "auditor";
+            if (donorRepository.findByEmail(email).isPresent())
+                return "donor";
         }
 
         return null;

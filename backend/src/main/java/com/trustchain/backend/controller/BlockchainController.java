@@ -18,6 +18,7 @@ import org.web3j.abi.TypeReference;
 import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Utf8String;
+import org.web3j.abi.datatypes.generated.Bytes32;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameterName;
@@ -27,10 +28,12 @@ import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -66,6 +69,64 @@ public class BlockchainController {
         return ResponseEntity.ok(out);
     }
 
+    @RequireRole(UserRole.VENDOR)
+    @PostMapping("/invoices/{invoiceUuid}/hash")
+    public ResponseEntity<Map<String, Object>> storeInvoiceHash(@PathVariable UUID invoiceUuid, @RequestParam String ipfsCid) throws Exception {
+        if (escrowClient == null) {
+            if (properties.isDemoMode() && demoLedger != null) {
+                String txHash = "demo-" + UUID.randomUUID();
+                BlockchainEvent e = new BlockchainEvent();
+                e.setEventName("InvoiceHashStored");
+                e.setChainId(properties.getChainId());
+                e.setContractAddress(properties.getContractAddress());
+                e.setTransactionHash(txHash);
+                e.setBlockNumber(0L);
+                e.setInvoiceId(uuidToBytes32Hex(invoiceUuid));
+                e.setIpfsHash(ipfsCid);
+                eventRepository.save(e);
+                return ResponseEntity.ok(Map.of(
+                        "invoiceUuid", invoiceUuid.toString(),
+                        "ipfsCid", ipfsCid,
+                        "txHash", txHash
+                ));
+            }
+            return ResponseEntity.status(503).body(Map.of("error", "Blockchain signing not configured"));
+        }
+        TransactionReceipt receipt = escrowClient.storeInvoiceHash(uuidToBytes32(invoiceUuid), ipfsCid);
+        return ResponseEntity.ok(Map.of(
+                "invoiceUuid", invoiceUuid.toString(),
+                "ipfsCid", ipfsCid,
+                "txHash", receipt.getTransactionHash()
+        ));
+    }
+
+    @GetMapping("/invoices/{invoiceUuid}/hash")
+    public ResponseEntity<Map<String, Object>> getInvoiceHash(@PathVariable UUID invoiceUuid) throws Exception {
+        if (properties.isDemoMode() && demoLedger != null) {
+            Optional<BlockchainEvent> e = eventRepository.findTopByEventNameAndInvoiceIdOrderByCreatedAtDesc("InvoiceHashStored", uuidToBytes32Hex(invoiceUuid));
+            String ipfsCid = e.map(BlockchainEvent::getIpfsHash).orElse("");
+            return ResponseEntity.ok(Map.of(
+                    "invoiceUuid", invoiceUuid.toString(),
+                    "ipfsCid", ipfsCid
+            ));
+        }
+        Function function = new Function(
+                "getInvoiceHash",
+                Collections.singletonList(new Bytes32(uuidToBytes32(invoiceUuid))),
+                Collections.singletonList(new TypeReference<Utf8String>() {})
+        );
+        String data = FunctionEncoder.encode(function);
+        EthCall response = web3j.ethCall(
+                Transaction.createEthCallTransaction("0x0000000000000000000000000000000000000000", properties.getContractAddress(), data),
+                DefaultBlockParameterName.LATEST
+        ).send();
+        String ipfsCid = ((Utf8String) FunctionReturnDecoder.decode(response.getValue(), function.getOutputParameters()).get(0)).getValue();
+        return ResponseEntity.ok(Map.of(
+                "invoiceUuid", invoiceUuid.toString(),
+                "ipfsCid", ipfsCid
+        ));
+    }
+
     @GetMapping("/escrow/balance")
     public ResponseEntity<Map<String, Object>> escrowBalance() throws Exception {
         String contract = properties.getContractAddress();
@@ -80,6 +141,28 @@ public class BlockchainController {
         out.put("balanceWei", balanceWei.toString());
         out.put("balancePol", new BigDecimal(balanceWei).movePointLeft(18).toPlainString());
         return ResponseEntity.ok(out);
+    }
+
+    private byte[] uuidToBytes32(UUID value) {
+        byte[] uuidBytes = ByteBuffer.allocate(16)
+                .putLong(value.getMostSignificantBits())
+                .putLong(value.getLeastSignificantBits())
+                .array();
+        byte[] bytes32 = new byte[32];
+        System.arraycopy(uuidBytes, 0, bytes32, 0, uuidBytes.length);
+        return bytes32;
+    }
+
+    private String uuidToBytes32Hex(UUID value) {
+        byte[] bytes32 = uuidToBytes32(value);
+        char[] hexArray = "0123456789abcdef".toCharArray();
+        char[] hexChars = new char[bytes32.length * 2];
+        for (int j = 0; j < bytes32.length; j++) {
+            int v = bytes32[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return "0x" + new String(hexChars);
     }
 
     @GetMapping("/schemes/{schemeUuid}/balance")

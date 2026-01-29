@@ -4,6 +4,7 @@ import com.trustchain.backend.model.BlockchainEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface BlockchainEventRepository extends JpaRepository<BlockchainEvent, UUID> {
@@ -11,4 +12,5 @@ public interface BlockchainEventRepository extends JpaRepository<BlockchainEvent
     List<BlockchainEvent> findTop50ByOrderByCreatedAtDesc();
     List<BlockchainEvent> findTop50ByFromAddressOrderByCreatedAtDesc(String fromAddress);
     boolean existsByTransactionHashAndEventNameAndBlockNumber(String transactionHash, String eventName, Long blockNumber);
+    Optional<BlockchainEvent> findTopByEventNameAndInvoiceIdOrderByCreatedAtDesc(String eventName, String invoiceId);
 }

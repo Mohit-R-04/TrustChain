@@ -12,6 +12,7 @@ import org.web3j.abi.datatypes.Bool;
 import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Type;
 import org.web3j.abi.datatypes.Utf8String;
+import org.web3j.abi.datatypes.generated.Bytes32;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
@@ -122,6 +123,25 @@ public class TrustChainEscrowClient {
                 Collections.emptyList()
         );
         return send(function, BigInteger.ZERO);
+    }
+
+    public TransactionReceipt storeInvoiceHash(byte[] invoiceIdBytes32, String ipfsHash) throws Exception {
+        Function function = new Function(
+                "storeInvoiceHash",
+                Arrays.asList(new Bytes32(invoiceIdBytes32), new Utf8String(ipfsHash)),
+                Collections.emptyList()
+        );
+        return send(function, BigInteger.ZERO);
+    }
+
+    public String getInvoiceHash(byte[] invoiceIdBytes32) throws Exception {
+        Function function = new Function(
+                "getInvoiceHash",
+                Collections.singletonList(new Bytes32(invoiceIdBytes32)),
+                Collections.singletonList(new TypeReference<Utf8String>() {})
+        );
+        List<Type> out = call(function);
+        return ((Utf8String) out.get(0)).getValue();
     }
 
     public TransactionReceipt approveProof(BigInteger schemeId, BigInteger milestoneId) throws Exception {

@@ -16,6 +16,7 @@ import org.web3j.abi.datatypes.Address;
 import org.web3j.abi.datatypes.Event;
 import org.web3j.abi.datatypes.Type;
 import org.web3j.abi.datatypes.Utf8String;
+import org.web3j.abi.datatypes.generated.Bytes32;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.abi.datatypes.generated.Uint8;
 import org.web3j.protocol.Web3j;
@@ -97,6 +98,11 @@ public class BlockchainEventSyncService {
             new TypeReference<Uint256>(true) {},
             new TypeReference<Address>(true) {}
     ));
+    private static final Event INVOICE_HASH_STORED = new Event("InvoiceHashStored", Arrays.asList(
+            new TypeReference<Bytes32>(true) {},
+            new TypeReference<Address>(true) {},
+            new TypeReference<Utf8String>() {}
+    ));
 
     @Autowired
     private Web3j web3j;
@@ -176,6 +182,7 @@ public class BlockchainEventSyncService {
         event = event.or(() -> decodeRefundIssued(sig, log));
         event = event.or(() -> decodeFundsLocked(sig, log));
         event = event.or(() -> decodeSchemeCreated(sig, log));
+        event = event.or(() -> decodeInvoiceHashStored(sig, log));
 
         if (event.isEmpty()) {
             return;
@@ -349,6 +356,19 @@ public class BlockchainEventSyncService {
         return Optional.of(e);
     }
 
+    private Optional<BlockchainEvent> decodeInvoiceHashStored(String sig, Log log) {
+        if (!EventEncoder.encode(INVOICE_HASH_STORED).equals(sig) || log.getTopics().size() < 3) {
+            return Optional.empty();
+        }
+        BlockchainEvent e = new BlockchainEvent();
+        e.setEventName("InvoiceHashStored");
+        e.setInvoiceId(topicToBytes32(log.getTopics().get(1)));
+        e.setFromAddress(topicToAddress(log.getTopics().get(2)));
+        List<Type> data = FunctionReturnDecoder.decode(log.getData(), INVOICE_HASH_STORED.getNonIndexedParameters());
+        e.setIpfsHash(((Utf8String) data.get(0)).getValue());
+        return Optional.of(e);
+    }
+
     private static BigInteger topicToUint256(String topic) {
         String clean = topic.startsWith("0x") ? topic.substring(2) : topic;
         return new BigInteger(clean, 16);
@@ -360,5 +380,13 @@ public class BlockchainEventSyncService {
             return "0x" + clean;
         }
         return "0x" + clean.substring(clean.length() - 40);
+    }
+
+    private static String topicToBytes32(String topic) {
+        String clean = topic.startsWith("0x") ? topic.substring(2) : topic;
+        if (clean.length() >= 64) {
+            return "0x" + clean.substring(clean.length() - 64);
+        }
+        return "0x" + "0".repeat(64 - clean.length()) + clean;
     }
 }

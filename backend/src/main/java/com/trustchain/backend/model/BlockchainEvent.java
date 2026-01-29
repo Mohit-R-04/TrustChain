@@ -34,6 +34,9 @@ public class BlockchainEvent {
     @Column(name = "milestone_id", length = 80)
     private String milestoneId;
 
+    @Column(name = "invoice_id", length = 80)
+    private String invoiceId;
+
     @Column(name = "from_address", length = 80)
     private String fromAddress;
 
@@ -111,6 +114,14 @@ public class BlockchainEvent {
 
     public void setMilestoneId(String milestoneId) {
         this.milestoneId = milestoneId;
+    }
+
+    public String getInvoiceId() {
+        return invoiceId;
+    }
+
+    public void setInvoiceId(String invoiceId) {
+        this.invoiceId = invoiceId;
     }
 
     public String getFromAddress() {
