@@ -26,13 +26,14 @@ const GovernmentDashboard = () => {
     const [communityNeeds, setCommunityNeeds] = useState([]);
     const [communityNeedsLoading, setCommunityNeedsLoading] = useState(false);
     const [communityNeedsError, setCommunityNeedsError] = useState(null);
-    
+
     const [stats, setStats] = useState({
         totalSchemes: 0,
         fundsAllocated: 0,
-        pendingReviews: 0
+        pendingReviews: 0,
+        beneficiariesReached: 0
     });
-    
+
     const [transactions, setTransactions] = useState([]);
     const [schemes, setSchemes] = useState([]);
     const [invoices, setInvoices] = useState([]);
@@ -53,25 +54,53 @@ const GovernmentDashboard = () => {
         try {
             const token = await getToken();
             const headers = { 'Authorization': `Bearer ${token}` };
-            
+
             // Fetch Schemes
             const schemesRes = await fetch(`${API_URL}/api/scheme`);
             if (schemesRes.ok) {
                 const data = await schemesRes.json();
                 setSchemes(data);
-                setStats(prev => ({ 
-                    ...prev, 
+                setStats(prev => ({
+                    ...prev,
                     totalSchemes: data.length,
-                    fundsAllocated: data.reduce((sum, s) => sum + (s.budget || 0), 0)
+                    fundsAllocated: data.reduce((sum, s) => sum + (s.budget || 0), 0),
+                    beneficiariesReached: data.reduce((sum, s) => sum + (s.expectedBeneficiaries || 0), 0)
                 }));
             }
 
-            // Fetch Transactions (for Monitor Funds)
+            let combinedTransactions = [];
+
+            // Fetch Transactions (Payments/Expenses)
             const txRes = await fetch(`${API_URL}/api/transaction`, { headers });
             if (txRes.ok) {
-                const data = await txRes.json();
-                setTransactions(data);
+                const txData = await txRes.json();
+                const formattedTx = txData.map(tx => ({
+                    id: tx.transactionId,
+                    type: 'Payment',
+                    amount: tx.totalAmount,
+                    date: tx.createdAt,
+                    status: tx.status
+                }));
+                combinedTransactions = [...combinedTransactions, ...formattedTx];
             }
+
+            // Fetch Donations (Deposits)
+            const donationRes = await fetch(`${API_URL}/api/donation`, { headers });
+            if (donationRes.ok) {
+                const donationData = await donationRes.json();
+                const formattedDonations = donationData.map(d => ({
+                    id: d.donationId,
+                    type: 'Deposit',
+                    amount: d.amount,
+                    date: d.timestamp,
+                    status: d.status
+                }));
+                combinedTransactions = [...combinedTransactions, ...formattedDonations];
+            }
+
+            // Sort by date descending
+            combinedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            setTransactions(combinedTransactions);
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -122,26 +151,7 @@ const GovernmentDashboard = () => {
         }
     };
 
-    const voteOnNeed = async (needId, value) => {
-        const voterEmail =
-            user?.primaryEmailAddress?.emailAddress ||
-            user?.emailAddresses?.[0]?.emailAddress ||
-            `${user?.id || 'government'}@trustchain.local`;
 
-        try {
-            const res = await fetch(`${API_URL}/api/community-needs/${needId}/vote`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: voterEmail, value })
-            });
-            if (!res.ok) return;
-            const updated = await res.json();
-            setCommunityNeeds((prev) =>
-                prev.map((n) => (n.needId === updated.needId ? updated : n))
-            );
-        } catch {
-        }
-    };
 
     const fetchInvoices = async () => {
         try {
@@ -237,7 +247,7 @@ const GovernmentDashboard = () => {
                         <div className="stat-icon">📈</div>
                         <div className="stat-content">
                             <h3>Beneficiaries Reached</h3>
-                            <p className="stat-value">0</p>
+                            <p className="stat-value">{stats.beneficiariesReached?.toLocaleString() || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -245,7 +255,7 @@ const GovernmentDashboard = () => {
                 <div className="action-section">
                     <h2>Quick Actions</h2>
                     <div className="action-buttons">
-                        <button 
+                        <button
                             className="action-btn primary"
                             onClick={() => setShowCreateForm(true)}
                         >
@@ -257,7 +267,7 @@ const GovernmentDashboard = () => {
                         >
                             Donate to a Scheme
                         </button>
-                        <button 
+                        <button
                             className="action-btn secondary"
                             onClick={() => {
                                 fetchDashboardData();
@@ -266,7 +276,7 @@ const GovernmentDashboard = () => {
                         >
                             Monitor Funds
                         </button>
-                        <button 
+                        <button
                             className="action-btn secondary"
                             onClick={() => {
                                 fetchDashboardData();
@@ -307,7 +317,7 @@ const GovernmentDashboard = () => {
 
             {/* Create Scheme Modal */}
             {showCreateForm && (
-                <CreateSchemeForm 
+                <CreateSchemeForm
                     onClose={() => setShowCreateForm(false)}
                     onSuccess={(data) => {
                         console.log('Scheme created:', data);
@@ -333,6 +343,7 @@ const GovernmentDashboard = () => {
                                     <thead>
                                         <tr>
                                             <th>ID</th>
+                                            <th>Type</th>
                                             <th>Amount</th>
                                             <th>Status</th>
                                             <th>Date</th>
@@ -340,15 +351,20 @@ const GovernmentDashboard = () => {
                                     </thead>
                                     <tbody>
                                         {transactions.map(tx => (
-                                            <tr key={tx.transactionId}>
-                                                <td className="monospace">{tx.transactionId.substring(0, 8)}...</td>
+                                            <tr key={tx.id}>
+                                                <td className="monospace">{tx.id.substring(0, 8)}...</td>
+                                                <td>
+                                                    <span className={`status-badge ${tx.type === 'Deposit' ? 'active' : 'completed'}`}>
+                                                        {tx.type}
+                                                    </span>
+                                                </td>
                                                 <td>₹{tx.amount}</td>
                                                 <td>
                                                     <span className={`status-badge ${tx.status.toLowerCase()}`}>
                                                         {tx.status}
                                                     </span>
                                                 </td>
-                                                <td>{new Date(tx.timestamp).toLocaleDateString()}</td>
+                                                <td>{new Date(tx.date).toLocaleDateString()}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -573,9 +589,6 @@ const GovernmentDashboard = () => {
                                             <th>Title</th>
                                             <th>Category</th>
                                             <th>Location</th>
-                                            <th>Status</th>
-                                            <th>Votes</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -584,27 +597,6 @@ const GovernmentDashboard = () => {
                                                 <td>{n.title}</td>
                                                 <td>{n.category}</td>
                                                 <td>{n.location}</td>
-                                                <td>
-                                                    <span className={`status-badge ${String(n.status || '').toLowerCase()}`}>
-                                                        {n.status}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span style={{ display: 'inline-flex', gap: '10px', alignItems: 'center' }}>
-                                                        <span>↑ {n.upvotes || 0}</span>
-                                                        <span>↓ {n.downvotes || 0}</span>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span style={{ display: 'inline-flex', gap: '8px' }}>
-                                                        <button className="action-btn small" onClick={() => voteOnNeed(n.needId, 1)}>
-                                                            Upvote
-                                                        </button>
-                                                        <button className="action-btn small" onClick={() => voteOnNeed(n.needId, -1)}>
-                                                            Downvote
-                                                        </button>
-                                                    </span>
-                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
