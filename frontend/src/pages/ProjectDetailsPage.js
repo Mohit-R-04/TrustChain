@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import './CitizenPage.css';
+import './ProjectDetailsPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
@@ -338,65 +338,63 @@ const ProjectDetailsPage = () => {
     const statusIsSuccess = /sent|verified|success/i.test(statusMessage) && !statusIsError;
 
     return (
-        <div className="citizen-container">
-            <nav className="citizen-nav">
-                <div className="nav-logo" style={{ cursor: 'pointer' }} onClick={() => navigate('/citizen')}>
-                    <span className="logo-icon">🔗</span>
+        <div className="project-details-container">
+            <nav className="project-nav">
+                <div className="project-logo" style={{ cursor: 'pointer' }} onClick={() => navigate('/citizen')}>
+                    <span className="project-logo-icon">🔗</span>
                     <h2>Trust<span className="highlight">Chain</span></h2>
                 </div>
-                <button className="nav-login-btn" onClick={() => navigate('/citizen')}>Back</button>
+                <button className="back-button" onClick={() => navigate('/citizen')}>Back</button>
             </nav>
 
-            <div className="project-details-wrap">
-                <div className="project-details-card animate-scale-in">
-                    <div className="project-details-header">
+            <div className="project-header">
+                <div className="animate-scale-in">
+                    <div className="content-section">
                         <div>
-                            <div className="project-details-badge">{project.category}</div>
-                            <h1 className="project-details-title">{project.title}</h1>
-                            <p className="project-details-subtitle">📍 {project.location}</p>
+                            <div className={`project-category-badge ${String(project.category || '').toLowerCase()}`}>{project.category}</div>
+                            <h1 className="project-title">{project.title}</h1>
+                            <p className="project-location">📍 {project.location}</p>
                         </div>
-                        <div className="project-details-metrics">
-                            <div className="project-details-metric">
-                                <span className="metric-label">Amount</span>
-                                <span className="metric-value">₹{Number(project.amountInr || 0).toLocaleString()}</span>
+                        <div className="project-stats-grid">
+                            <div className="stat-card">
+                                <span className="stat-label">Amount</span>
+                                <span className="stat-value">₹{Number(project.amountInr || 0).toLocaleString()}</span>
                             </div>
-                            <div className="project-details-metric">
-                                <span className="metric-label">Donors</span>
-                                <span className="metric-value">{Number(project.donors || 0).toLocaleString()}</span>
+                            <div className="stat-card">
+                                <span className="stat-label">Donors</span>
+                                <span className="stat-value">{Number(project.donors || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="progress-section" style={{ marginTop: '32px' }}>
+                            <div className="progress-header">
+                                <span>Progress</span>
+                                <span>{project.progress}%</span>
+                            </div>
+                            <div className="progress-bar-container">
+                                <div className="progress-bar-fill" style={{ width: `${project.progress}%` }}></div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="project-details-progress">
-                        <div className="progress-info">
-                            <span>Progress</span>
-                            <span>{project.progress}%</span>
-                        </div>
-                        <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${project.progress}%` }}></div>
-                        </div>
+                    <div className="content-section">
+                        <h3 className="section-title">About this project</h3>
+                        <p className="project-description">{project.description}</p>
                     </div>
 
-                    <div className="project-details-section">
-                        <h3 className="section-title-small">About this project</h3>
-                        <p className="project-details-text">{project.description}</p>
-                    </div>
+                    <div className="content-section">
+                        <h3 className="section-title">Comments</h3>
 
-                    <div className="project-details-divider"></div>
-
-                    <div className="project-details-section">
-                        <h3 className="section-title-small">Comments</h3>
-
-                        <div className="comment-box">
-                            <div className="comment-otp">
-                                <div className="comment-otp-header">
-                                    <div className="comment-otp-title">Verify email before commenting</div>
-                                    {isOtpVerified && <div className="comment-otp-pill">Verified</div>}
+                        <div className="comments-section">
+                            <div className="otp-section">
+                                <div className="otp-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                                    <div className="otp-title">Verify email before commenting</div>
+                                    {isOtpVerified && <div className="otp-status success">Verified</div>}
                                 </div>
 
-                                <div className="comment-otp-grid">
-                                    <div className="form-group" style={{ margin: 0 }}>
-                                        <label>Email</label>
+                                <div>
+                                    <div className="otp-input-group">
+
                                         <input
                                             type="email"
                                             value={email}
@@ -407,154 +405,155 @@ const ProjectDetailsPage = () => {
                                                 if (!isOtpSent) setTimer(0);
                                             }}
                                             placeholder="you@example.com"
-                                            className="form-input"
+                                            className="otp-input"
                                             disabled={isOtpSent && timer > 0}
+                                        />
+
+
+                                        {!isOtpSent ? (
+                                            <button type="button" className="otp-button" onClick={handleSendOtp}>
+                                                Send OTP
+                                            </button>
+                                        ) : (
+                                            <div className="comment-otp-actions">
+                                                <div className="otp-input-group">
+
+                                                    <div style={{ position: 'relative' }}>
+                                                        <input
+                                                            type="text"
+                                                            value={otp}
+                                                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                                            placeholder="6 digits"
+                                                            className="otp-input otp-code"
+                                                            maxLength={6}
+                                                            style={{}}
+                                                        />
+                                                        <span className="otp-timer">
+                                                            00:{timer < 10 ? `0${timer}` : timer}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <button type="button" className="otp-button" onClick={handleVerifyOtp}>
+                                                    Verify
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="otp-button"
+                                                    disabled={timer > 0}
+                                                    onClick={() => {
+                                                        if (timer === 0) {
+                                                            setIsOtpSent(false);
+                                                            setOtp('');
+                                                            setStatusMessage('');
+                                                        }
+                                                    }}
+                                                >
+                                                    {timer > 0 ? `Resend in ${timer}s` : 'Resend / Change email'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <form className="comment-form" onSubmit={handlePostComment}>
+                                    <div className="comment-form-row comment-input-group">
+                                        <textarea
+                                            className="comment-textarea"
+                                            rows="4"
+                                            placeholder="Write your comment..."
+                                            value={commentText}
+                                            onChange={(e) => setCommentText(e.target.value)}
                                         />
                                     </div>
 
-                                    {!isOtpSent ? (
-                                        <button type="button" className="btn-primary" onClick={handleSendOtp}>
-                                            Send OTP
-                                        </button>
-                                    ) : (
-                                        <div className="comment-otp-actions">
-                                            <div className="form-group" style={{ margin: 0 }}>
-                                                <label>OTP</label>
-                                                <div style={{ position: 'relative' }}>
-                                                    <input
-                                                        type="text"
-                                                        value={otp}
-                                                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                                        placeholder="6 digits"
-                                                        className="form-input"
-                                                        maxLength={6}
-                                                        style={{ letterSpacing: '2px', fontSize: '1.05rem', fontWeight: 600 }}
-                                                    />
-                                                    <span className="otp-timer">
-                                                        00:{timer < 10 ? `0${timer}` : timer}
-                                                    </span>
+                                    <div className="comment-form-row">
+                                        <div className="image-upload-section">
+                                            <label className="file-label">
+                                                <input type="file" className="file-input" accept="image/*" onChange={handleImageChange} />
+                                                Upload image
+                                            </label>
+                                            {commentImage && (
+                                                <div className="file-name">
+                                                    {commentImage.name}
                                                 </div>
-                                            </div>
-                                            <button type="button" className="btn-primary" onClick={handleVerifyOtp}>
-                                                Verify
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="link-button"
-                                                disabled={timer > 0}
-                                                onClick={() => {
-                                                    if (timer === 0) {
-                                                        setIsOtpSent(false);
-                                                        setOtp('');
-                                                        setStatusMessage('');
-                                                    }
-                                                }}
-                                            >
-                                                {timer > 0 ? `Resend in ${timer}s` : 'Resend / Change email'}
-                                            </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {commentImagePreview && (
+                                        <div className="image-preview">
+                                            <img src={commentImagePreview} alt="Preview" />
                                         </div>
                                     )}
-                                </div>
+
+                                    {statusMessage && (
+                                        <div className={`otp-status ${statusIsError ? 'error' : statusIsSuccess ? 'success' : ''}`}>
+                                            {statusMessage}
+                                        </div>
+                                    )}
+
+                                    <div className="comment-actions">
+                                        <button type="submit" className="submit-button" disabled={!isOtpVerified}>
+                                            Post Comment
+                                        </button>
+                                        {!isOtpVerified && (
+                                            <div className="otp-notice">
+                                                Please verify email with OTP to enable posting.
+                                            </div>
+                                        )}
+                                    </div>
+                                </form>
                             </div>
 
-                            <form className="comment-form" onSubmit={handlePostComment}>
-                                <div className="comment-form-row">
-                                    <textarea
-                                        className="form-textarea"
-                                        rows="4"
-                                        placeholder="Write your comment..."
-                                        value={commentText}
-                                        onChange={(e) => setCommentText(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="comment-form-row">
-                                    <div className="comment-upload">
-                                        <label className="comment-upload-label">
-                                            <input type="file" accept="image/*" onChange={handleImageChange} />
-                                            Upload image
-                                        </label>
-                                        {commentImage && (
-                                            <div className="comment-upload-meta">
-                                                {commentImage.name}
+                            <div className="comments-list">
+                                {comments.length === 0 ? (
+                                    <div className="no-comments">
+                                        No comments yet. Be the first to comment.
+                                    </div>
+                                ) : (
+                                    comments.map(c => (
+                                        <div className="comment-card" key={c.id}>
+                                            <div className="comment-header">
+                                                <div className="comment-author">{c.email || 'Anonymous'}</div>
+                                                <div className="comment-date">
+                                                    {new Date(c.createdAt).toLocaleString()}
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {commentImagePreview && (
-                                    <div className="comment-preview">
-                                        <img src={commentImagePreview} alt="Preview" />
-                                    </div>
+                                            <div className="comment-actions" style={{ marginBottom: '16px' }}>
+                                                <button
+                                                    type="button"
+                                                    className={`vote-button ${votes?.[c.id] === 'up' ? 'upvoted' : ''}`}
+                                                    onClick={() => handleVote(c.id, 'up')}
+                                                    aria-label="Upvote"
+                                                >
+                                                    ▲
+                                                </button>
+                                                <div className="vote-count">{typeof c.score === 'number' ? c.score : 0}</div>
+                                                <button
+                                                    type="button"
+                                                    className={`vote-button ${votes?.[c.id] === 'down' ? 'downvoted' : ''}`}
+                                                    onClick={() => handleVote(c.id, 'down')}
+                                                    aria-label="Downvote"
+                                                >
+                                                    ▼
+                                                </button>
+                                            </div>
+                                            {c.text && <div className="comment-text">{c.text}</div>}
+                                            {c.image && (
+                                                <div className="comment-image">
+                                                    <img src={c.image} alt="Comment attachment" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
                                 )}
-
-                                {statusMessage && (
-                                    <div className={`status-banner ${statusIsError ? 'status-error' : statusIsSuccess ? 'status-success' : 'status-neutral'}`}>
-                                        {statusMessage}
-                                    </div>
-                                )}
-
-                                <div className="comment-actions">
-                                    <button type="submit" className="btn-primary" disabled={!isOtpVerified}>
-                                        Post Comment
-                                    </button>
-                                    {!isOtpVerified && (
-                                        <div className="comment-hint">
-                                            Verify OTP to enable posting.
-                                        </div>
-                                    )}
-                                </div>
-                            </form>
-                        </div>
-
-                        <div className="comments-list">
-                            {comments.length === 0 ? (
-                                <div className="empty-comments">
-                                    No comments yet. Be the first to comment.
-                                </div>
-                            ) : (
-                                comments.map(c => (
-                                    <div className="comment-item" key={c.id}>
-                                        <div className="comment-meta">
-                                            <div className="comment-email">{c.email || 'Anonymous'}</div>
-                                            <div className="comment-date">
-                                                {new Date(c.createdAt).toLocaleString()}
-                                            </div>
-                                        </div>
-                                        <div className="comment-votes">
-                                            <button
-                                                type="button"
-                                                className={`vote-btn ${votes?.[c.id] === 'up' ? 'active' : ''}`}
-                                                onClick={() => handleVote(c.id, 'up')}
-                                                aria-label="Upvote"
-                                            >
-                                                ▲
-                                            </button>
-                                            <div className="vote-count">{typeof c.score === 'number' ? c.score : 0}</div>
-                                            <button
-                                                type="button"
-                                                className={`vote-btn ${votes?.[c.id] === 'down' ? 'active' : ''}`}
-                                                onClick={() => handleVote(c.id, 'down')}
-                                                aria-label="Downvote"
-                                            >
-                                                ▼
-                                            </button>
-                                        </div>
-                                        {c.text && <div className="comment-text">{c.text}</div>}
-                                        {c.image && (
-                                            <div className="comment-image">
-                                                <img src={c.image} alt="Comment attachment" />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <footer className="citizen-footer">
+            <footer className="project-footer">
                 <p>Secured by blockchain technology • Transparent • Immutable</p>
             </footer>
         </div>

@@ -1,6 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useClerk } from '@clerk/clerk-react';
+import {
+    HiShieldCheck,
+    HiTrendingUp,
+    HiCheckCircle,
+    HiChartBar,
+    HiSearch,
+    HiLocationMarker,
+    HiThumbUp,
+    HiThumbDown,
+    HiLockClosed,
+    HiDocumentText,
+    HiLink,
+    HiEye,
+    HiPlus,
+    HiLightningBolt
+} from 'react-icons/hi';
 import './CitizenPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
@@ -117,7 +133,7 @@ const CitizenPage = () => {
                 setIsOtpSent(true);
                 const text = await response.text().catch(() => '');
                 setVerificationStatus(text || 'OTP sent to your email.');
-                setTimer(30); // Start 30 seconds timer
+                setTimer(30);
                 setOtpVerificationToken('');
             } else {
                 const text = await response.text().catch(() => '');
@@ -170,11 +186,9 @@ const CitizenPage = () => {
             interval = setInterval(() => {
                 setTimer((prevTimer) => prevTimer - 1);
             }, 1000);
-        } else if (timer === 0 && isOtpSent) {
-            // Timer expired
         }
         return () => clearInterval(interval);
-    }, [timer, isOtpSent]);
+    }, [timer]);
 
     React.useEffect(() => {
         if (!isPostModalOpen) {
@@ -188,8 +202,11 @@ const CitizenPage = () => {
         }
     }, [isPostModalOpen]);
 
+    const [isMainLoading, setIsMainLoading] = React.useState(true);
+
     React.useEffect(() => {
         const load = async () => {
+            setIsMainLoading(true);
             try {
                 const [tRes, pRes] = await Promise.all([
                     fetch(`${API_URL}/api/citizen/transparency`),
@@ -205,6 +222,8 @@ const CitizenPage = () => {
                 }
             } catch (err) {
                 console.error('Failed to load citizen data:', err);
+            } finally {
+                setIsMainLoading(false);
             }
         };
         load();
@@ -213,22 +232,26 @@ const CitizenPage = () => {
 
     const locations = React.useMemo(() => ['All', ...new Set(projects.map(p => p.location).filter(Boolean))], [projects]);
 
-    const filteredProjects = projects.filter(project => {
-        const matchesLocation = selectedLocation === 'All' || project.location === selectedLocation;
-        const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            project.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            project.category.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesLocation && matchesSearch;
-    });
+    const filteredProjects = React.useMemo(() => {
+        return projects.filter(project => {
+            const matchesLocation = selectedLocation === 'All' || project.location === selectedLocation;
+            const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                project.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                project.category.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesLocation && matchesSearch;
+        });
+    }, [projects, selectedLocation, searchQuery]);
 
-    const filteredNeeds = needs.filter((need) => {
-        const title = String(need.title || '').toLowerCase();
-        const location = String(need.location || '').toLowerCase();
-        const q = needsSearchQuery.toLowerCase();
-        const matchesSearch = title.includes(q) || location.includes(q);
-        const matchesCategory = needsCategory === 'All' || need.category === needsCategory;
-        return matchesSearch && matchesCategory;
-    });
+    const filteredNeeds = React.useMemo(() => {
+        return needs.filter((need) => {
+            const title = String(need.title || '').toLowerCase();
+            const location = String(need.location || '').toLowerCase();
+            const q = needsSearchQuery.toLowerCase();
+            const matchesSearch = title.includes(q) || location.includes(q);
+            const matchesCategory = needsCategory === 'All' || need.category === needsCategory;
+            return matchesSearch && matchesCategory;
+        });
+    }, [needs, needsSearchQuery, needsCategory]);
 
     const handleAuthAction = async () => {
         if (isSignedIn) {
@@ -243,7 +266,7 @@ const CitizenPage = () => {
         <div className="citizen-container">
             <nav className="citizen-nav">
                 <div className="nav-logo">
-                    <span className="logo-icon">🔗</span>
+                    <HiLightningBolt className="logo-icon" size={32} />
                     <h2>Trust<span className="highlight">Chain</span></h2>
                 </div>
                 <button className="nav-login-btn" onClick={handleAuthAction}>
@@ -254,7 +277,7 @@ const CitizenPage = () => {
             <div className="citizen-hero">
                 <div className="hero-content">
                     <div className="badge">
-                        <span className="badge-icon">🔷</span>
+                        <HiShieldCheck className="badge-icon" size={20} />
                         Public Access - No Login Required
                     </div>
                     <h1 className="hero-title">
@@ -264,10 +287,11 @@ const CitizenPage = () => {
                         Verify NGO fund utilization in real-time. All data is stored immutably on the blockchain.
                     </p>
                     <div className="hero-buttons">
-                        <button 
+                        <button
                             className="btn-primary"
                             onClick={() => setIsPostModalOpen(true)}
                         >
+                            <HiPlus size={18} style={{ marginRight: '8px' }} />
                             Post Community Needs
                         </button>
                     </div>
@@ -276,27 +300,27 @@ const CitizenPage = () => {
 
             <div className="stats-section">
                 <div className="stat-box">
-                    <div className="stat-icon-box">💰</div>
+                    <div className="stat-icon-box"><HiTrendingUp size={40} /></div>
                     <h3>Total Funds</h3>
-                    <p className="stat-number">₹{Number(transparency?.totalFundsInr || 0).toLocaleString()}</p>
+                    <p className="stat-number">{isMainLoading ? '...' : `₹${Number(transparency?.totalFundsInr || 0).toLocaleString()}`}</p>
                 </div>
 
                 <div className="stat-box">
-                    <div className="stat-icon-box">🚀</div>
+                    <div className="stat-icon-box"><HiChartBar size={40} /></div>
                     <h3>Projects</h3>
-                    <p className="stat-number">{Number(transparency?.projects || 0).toLocaleString()}</p>
+                    <p className="stat-number">{isMainLoading ? '...' : Number(transparency?.projects || 0).toLocaleString()}</p>
                 </div>
 
                 <div className="stat-box">
-                    <div className="stat-icon-box">✅</div>
+                    <div className="stat-icon-box"><HiCheckCircle size={40} /></div>
                     <h3>Transactions Verified</h3>
-                    <p className="stat-number">{Number(transparency?.transactionsVerified || 0).toLocaleString()}</p>
+                    <p className="stat-number">{isMainLoading ? '...' : Number(transparency?.transactionsVerified || 0).toLocaleString()}</p>
                 </div>
 
                 <div className="stat-box">
-                    <div className="stat-icon-box">📊</div>
+                    <div className="stat-icon-box"><HiChartBar size={40} /></div>
                     <h3>Utilization Rate</h3>
-                    <p className="stat-number">{Number(transparency?.utilizationRate || 0).toFixed(0)}%</p>
+                    <p className="stat-number">{isMainLoading ? '...' : `${Number(transparency?.utilizationRate || 0).toFixed(0)}%`}</p>
                 </div>
             </div>
 
@@ -304,55 +328,65 @@ const CitizenPage = () => {
                 <div className="dashboard-card">
                     <h3 className="card-title">Fund Utilization Overview</h3>
                     <div className="utilization-chart">
-                        <div className="chart-bar-container">
-                            <div className="chart-label">
-                                <span>Donated</span>
-                                <span>100%</span>
-                            </div>
-                            <div className="progress-bar">
-                                <div className="progress-fill donated" style={{ width: '100%' }}></div>
-                            </div>
-                        </div>
-                        <div className="chart-bar-container">
-                            <div className="chart-label">
-                                <span>Utilized</span>
-                                <span>{Number(transparency?.utilizationRate || 0).toFixed(0)}%</span>
-                            </div>
-                            <div className="progress-bar">
-                                <div className="progress-fill utilized" style={{ width: `${Number(transparency?.utilizationRate || 0).toFixed(0)}%` }}></div>
-                            </div>
-                        </div>
-                        <div className="chart-bar-container">
-                            <div className="chart-label">
-                                <span>In Escrow</span>
-                                <span>{(100 - Number(transparency?.utilizationRate || 0)).toFixed(0)}%</span>
-                            </div>
-                            <div className="progress-bar">
-                                <div className="progress-fill escrow" style={{ width: `${(100 - Number(transparency?.utilizationRate || 0)).toFixed(0)}%` }}></div>
-                            </div>
-                        </div>
+                        {isMainLoading ? (
+                            <div style={{ padding: '20px', color: '#94a3b8', textAlign: 'center' }}>Loading chart...</div>
+                        ) : (
+                            <>
+                                <div className="chart-bar-container">
+                                    <div className="chart-label">
+                                        <span>Donated</span>
+                                        <span>100%</span>
+                                    </div>
+                                    <div className="progress-bar">
+                                        <div className="progress-fill donated" style={{ width: '100%' }}></div>
+                                    </div>
+                                </div>
+                                <div className="chart-bar-container">
+                                    <div className="chart-label">
+                                        <span>Utilized</span>
+                                        <span>{Number(transparency?.utilizationRate || 0).toFixed(0)}%</span>
+                                    </div>
+                                    <div className="progress-bar">
+                                        <div className="progress-fill utilized" style={{ width: `${Number(transparency?.utilizationRate || 0).toFixed(0)}%` }}></div>
+                                    </div>
+                                </div>
+                                <div className="chart-bar-container">
+                                    <div className="chart-label">
+                                        <span>In Escrow</span>
+                                        <span>{(100 - Number(transparency?.utilizationRate || 0)).toFixed(0)}%</span>
+                                    </div>
+                                    <div className="progress-bar">
+                                        <div className="progress-fill escrow" style={{ width: `${(100 - Number(transparency?.utilizationRate || 0)).toFixed(0)}%` }}></div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
                 <div className="dashboard-card">
                     <h3 className="card-title">Category Distribution</h3>
                     <div className="category-list">
-                        {(Array.isArray(transparency?.categoryDistribution) ? transparency.categoryDistribution : []).slice(0, 6).map((c) => {
-                            const percent = Number(c?.percent || 0);
-                            const label = c?.category || 'Other';
-                            const cls = String(label).toLowerCase().replace(/\s+/g, '');
-                            return (
-                                <div className="category-item" key={label}>
-                                    <div className="category-info">
-                                        <span>{label}</span>
-                                        <span>{percent.toFixed(0)}%</span>
+                        {isMainLoading ? (
+                            <div style={{ padding: '20px', color: '#94a3b8', textAlign: 'center' }}>Loading distribution...</div>
+                        ) : (
+                            (Array.isArray(transparency?.categoryDistribution) ? transparency.categoryDistribution : []).slice(0, 6).map((c) => {
+                                const percent = Number(c?.percent || 0);
+                                const label = c?.category || 'Other';
+                                const cls = String(label).toLowerCase().replace(/\s+/g, '');
+                                return (
+                                    <div className="category-item" key={label}>
+                                        <div className="category-info">
+                                            <span>{label}</span>
+                                            <span>{percent.toFixed(0)}%</span>
+                                        </div>
+                                        <div className="progress-bar small">
+                                            <div className={`progress-fill ${cls}`} style={{ width: `${percent.toFixed(0)}%` }}></div>
+                                        </div>
                                     </div>
-                                    <div className="progress-bar small">
-                                        <div className={`progress-fill ${cls}`} style={{ width: `${percent.toFixed(0)}%` }}></div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })
+                        )}
                     </div>
                 </div>
             </div>
@@ -362,7 +396,7 @@ const CitizenPage = () => {
                     <h2 className="section-title">Live Projects</h2>
                     <div className="search-filter-container">
                         <div className="search-box">
-                            <span className="search-icon">🔍</span>
+                            <span className="search-icon"><HiSearch size={18} /></span>
                             <input
                                 type="text"
                                 placeholder="Search projects, locations..."
@@ -386,52 +420,62 @@ const CitizenPage = () => {
                     </div>
                 </div>
                 <div className="projects-grid">
-                    {filteredProjects.map((project) => (
-                        <div
-                            className="project-card"
-                            key={project.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => navigate(`/projects/${project.id}`, { state: { project } })}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    navigate(`/projects/${project.id}`, { state: { project } });
-                                }
-                            }}
-                        >
-                            <div className="project-header">
-                                <div>
-                                    <h3>{project.title}</h3>
-                                    <p className="location">📍 {project.location}</p>
-                                </div>
-                                <span className={`category-tag ${String(project.category || '').toLowerCase()}`}>
-                                    {project.category}
-                                </span>
-                            </div>
-                            <div className="project-progress">
-                                <div className="progress-info">
-                                    <span>Progress</span>
-                                    <span>{project.progress}%</span>
-                                </div>
-                                <div className="progress-bar">
-                                    <div 
-                                        className="progress-fill" 
-                                        style={{ width: `${project.progress}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                            <div className="project-stats">
-                                <div>
-                                    <span className="stat-label">Amount</span>
-                                    <p className="stat-value">₹{Number(project.amountInr || 0).toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <span className="stat-label">Donors</span>
-                                    <p className="stat-value">{Number(project.donors || 0).toLocaleString()}</p>
-                                </div>
-                            </div>
+                    {isMainLoading ? (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                            Loading live projects...
                         </div>
-                    ))}
+                    ) : filteredProjects.length === 0 ? (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                            No projects match your search.
+                        </div>
+                    ) : (
+                        filteredProjects.map((project) => (
+                            <div
+                                className="project-card"
+                                key={project.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => navigate(`/projects/${project.id}`, { state: { project } })}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        navigate(`/projects/${project.id}`, { state: { project } });
+                                    }
+                                }}
+                            >
+                                <div className="project-header">
+                                    <div>
+                                        <h3>{project.title}</h3>
+                                        <p className="location"><HiLocationMarker size={14} style={{ display: 'inline', marginRight: '4px' }} /> {project.location}</p>
+                                    </div>
+                                    <span className={`category-tag ${String(project.category || '').toLowerCase()}`}>
+                                        {project.category}
+                                    </span>
+                                </div>
+                                <div className="project-progress">
+                                    <div className="progress-info">
+                                        <span>Progress</span>
+                                        <span>{project.progress}%</span>
+                                    </div>
+                                    <div className="progress-bar">
+                                        <div
+                                            className="progress-fill"
+                                            style={{ width: `${project.progress}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                                <div className="project-stats">
+                                    <div>
+                                        <span className="stat-label">Amount</span>
+                                        <p className="stat-value">₹{Number(project.amountInr || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <span className="stat-label">Donors</span>
+                                        <p className="stat-value">{Number(project.donors || 0).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )))
+                    }
                 </div>
             </div>
 
@@ -440,7 +484,7 @@ const CitizenPage = () => {
                     <h2 className="section-title">Community Needs</h2>
                     <div className="needs-tools">
                         <div className="needs-search">
-                            <span className="needs-search-icon">🔍</span>
+                            <span className="needs-search-icon"><HiSearch size={18} /></span>
                             <input
                                 type="text"
                                 placeholder="Search needs, locations..."
@@ -484,15 +528,15 @@ const CitizenPage = () => {
                                     <div className="needs-title">{need.title}</div>
                                     <div className="needs-desc">{need.description}</div>
                                     <div className="needs-meta">
-                                        <span>📍 {need.location}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><HiLocationMarker size={14} /> {need.location}</span>
                                     </div>
                                     <div className="needs-footer">
                                         <div className={`needs-status ${statusRaw.replace(/\s+/g, '-')}`}>
                                             {statusLabel}
                                         </div>
                                         <div className="needs-votes">
-                                            <span>👍 {need.upvotes || 0}</span>
-                                            <span>👎 {need.downvotes || 0}</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><HiThumbUp size={14} /> {need.upvotes || 0}</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><HiThumbDown size={14} /> {need.downvotes || 0}</span>
                                         </div>
                                     </div>
                                     <div className="needs-actions">
@@ -519,22 +563,22 @@ const CitizenPage = () => {
                 <h2 className="section-title">How TrustChain Works</h2>
                 <div className="features-grid">
                     <div className="feature-card">
-                        <div className="feature-icon">🔐</div>
+                        <div className="feature-icon"><HiLockClosed size={56} /></div>
                         <h3>Secure Escrow</h3>
                         <p>Funds locked in smart contracts until milestones are verified</p>
                     </div>
                     <div className="feature-card">
-                        <div className="feature-icon">📝</div>
+                        <div className="feature-icon"><HiDocumentText size={56} /></div>
                         <h3>IPFS Storage</h3>
                         <p>All documents stored on decentralized IPFS for transparency</p>
                     </div>
                     <div className="feature-card">
-                        <div className="feature-icon">⛓️</div>
+                        <div className="feature-icon"><HiLink size={56} /></div>
                         <h3>Blockchain Verified</h3>
                         <p>Every transaction recorded on Polygon blockchain</p>
                     </div>
                     <div className="feature-card">
-                        <div className="feature-icon">👁️</div>
+                        <div className="feature-icon"><HiEye size={56} /></div>
                         <h3>Full Transparency</h3>
                         <p>Track every rupee from donation to beneficiary</p>
                     </div>
@@ -545,13 +589,13 @@ const CitizenPage = () => {
                 <div className="modal-overlay">
                     <div className="modal-content animate-scale-in">
                         <h2 className="modal-title">Post a Community Need</h2>
-                        
+
                         {!isOtpVerified ? (
                             <div className="otp-verification-section">
                                 <p style={{ marginBottom: '1rem', color: '#666' }}>
                                     Please verify your email to post a community need.
                                 </p>
-                                
+
                                 <div className="form-group">
                                     <label>Email Address</label>
                                     <input
@@ -565,8 +609,8 @@ const CitizenPage = () => {
                                 </div>
 
                                 {!isOtpSent ? (
-                                    <button 
-                                        type="button" 
+                                    <button
+                                        type="button"
                                         className="btn-primary"
                                         style={{ width: '100%', marginTop: '0.5rem' }}
                                         onClick={handleSendOtp}
@@ -578,7 +622,7 @@ const CitizenPage = () => {
                                     <>
                                         <div className="form-group" style={{ marginTop: '1rem' }}>
                                             <label>Enter OTP</label>
-                                            <div style={{ position: 'relative' }}>
+                                            <div className="otp-input-container">
                                                 <input
                                                     type="text"
                                                     value={otp}
@@ -586,47 +630,38 @@ const CitizenPage = () => {
                                                     placeholder="Enter 6-digit OTP"
                                                     className="form-input"
                                                     maxLength={6}
-                                                    style={{ letterSpacing: '2px', fontSize: '1.1rem', fontWeight: '500' }}
+                                                    style={{
+                                                        letterSpacing: '4px',
+                                                        fontSize: '1.2rem',
+                                                        fontWeight: '700',
+                                                        fontFamily: 'Orbitron, monospace',
+                                                        textAlign: 'center',
+                                                        paddingRight: '80px'
+                                                    }}
                                                 />
                                                 {timer > 0 && (
-                                                    <span style={{
-                                                        position: 'absolute',
-                                                        right: '12px',
-                                                        top: '50%',
-                                                        transform: 'translateY(-50%)',
-                                                        color: '#2563eb',
-                                                        fontWeight: '600',
-                                                        fontSize: '0.9rem'
-                                                    }}>
+                                                    <span className="otp-timer">
                                                         00:{timer < 10 ? `0${timer}` : timer}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             className="btn-primary"
-                                            style={{ width: '100%', marginTop: '0.5rem' }}
+                                            style={{ width: '100%', marginTop: '1rem' }}
                                             onClick={handleVerifyOtp}
                                         >
                                             Verify OTP
                                         </button>
-                                        <button 
-                                            type="button" 
-                                            style={{ 
-                                                background: 'none', 
-                                                border: 'none', 
-                                                color: timer > 0 ? '#94a3b8' : '#2563eb', 
-                                                textDecoration: 'underline', 
-                                                cursor: timer > 0 ? 'not-allowed' : 'pointer',
-                                                marginTop: '0.5rem',
-                                                fontSize: '0.875rem'
-                                            }}
-                                            onClick={() => { 
+                                        <button
+                                            type="button"
+                                            className="resend-button"
+                                            onClick={() => {
                                                 if (timer === 0) {
-                                                    setIsOtpSent(false); 
-                                                    setOtp(''); 
-                                                    setVerificationStatus(''); 
+                                                    setIsOtpSent(false);
+                                                    setOtp('');
+                                                    setVerificationStatus('');
                                                 }
                                             }}
                                             disabled={timer > 0}
@@ -635,15 +670,11 @@ const CitizenPage = () => {
                                         </button>
                                     </>
                                 )}
-                                
+
                                 {verificationStatus && (
-                                    <p style={{ 
-                                        marginTop: '1rem', 
-                                        fontSize: '0.875rem', 
-                                        color: verificationStatus.includes('failed') || verificationStatus.includes('Invalid') || verificationStatus.includes('Error') ? '#ef4444' : '#22c55e' 
-                                    }}>
+                                    <div className={`verification-status ${verificationStatus.includes('failed') || verificationStatus.includes('Invalid') || verificationStatus.includes('Error') ? 'error' : 'success'}`}>
                                         {verificationStatus}
-                                    </p>
+                                    </div>
                                 )}
                                 <button
                                     type="button"
@@ -655,109 +686,109 @@ const CitizenPage = () => {
                                 </button>
                             </div>
                         ) : (
-                        <form
-                            className="modal-form"
-                            onSubmit={async (e) => {
-                                e.preventDefault();
+                            <form
+                                className="modal-form"
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
 
-                                if (!needTitle.trim() || !needCategory || !needLocation.trim() || !needDescription.trim()) {
-                                    setVerificationStatus('Please fill all fields before submitting.');
-                                    return;
-                                }
-
-                                try {
-                                    if (!otpVerificationToken) {
-                                        setVerificationStatus('Please verify your email with OTP again.');
-                                        setIsOtpVerified(false);
+                                    if (!needTitle.trim() || !needCategory || !needLocation.trim() || !needDescription.trim()) {
+                                        setVerificationStatus('Please fill all fields before submitting.');
                                         return;
                                     }
-                                    const response = await fetch(`${API_URL}/api/community-needs`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            title: needTitle.trim(),
-                                            category: needCategory,
-                                            location: needLocation.trim(),
-                                            description: needDescription.trim(),
-                                            email,
-                                            otpVerificationToken
-                                        })
-                                    });
 
-                                    if (response.ok) {
-                                        setNeedTitle('');
-                                        setNeedCategory('');
-                                        setNeedLocation('');
-                                        setNeedDescription('');
-                                        fetchNeeds();
-                                        setIsPostModalOpen(false);
-                                    } else {
-                                        setVerificationStatus('Failed to submit need. Please try again.');
+                                    try {
+                                        if (!otpVerificationToken) {
+                                            setVerificationStatus('Please verify your email with OTP again.');
+                                            setIsOtpVerified(false);
+                                            return;
+                                        }
+                                        const response = await fetch(`${API_URL}/api/community-needs`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                title: needTitle.trim(),
+                                                category: needCategory,
+                                                location: needLocation.trim(),
+                                                description: needDescription.trim(),
+                                                email,
+                                                otpVerificationToken
+                                            })
+                                        });
+
+                                        if (response.ok) {
+                                            setNeedTitle('');
+                                            setNeedCategory('');
+                                            setNeedLocation('');
+                                            setNeedDescription('');
+                                            fetchNeeds();
+                                            setIsPostModalOpen(false);
+                                        } else {
+                                            setVerificationStatus('Failed to submit need. Please try again.');
+                                        }
+                                    } catch (error) {
+                                        console.error('Error submitting community need:', error);
+                                        setVerificationStatus('Error submitting need. Ensure backend is running.');
                                     }
-                                } catch (error) {
-                                    console.error('Error submitting community need:', error);
-                                    setVerificationStatus('Error submitting need. Ensure backend is running.');
-                                }
-                            }}
-                        >
-                            <div className="form-group">
-                                <label>What does your community need?</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g., Mobile health clinic for regular checkups"
-                                    className="form-input"
-                                    value={needTitle}
-                                    onChange={(e) => setNeedTitle(e.target.value)}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Category</label>
-                                <select
-                                    className="form-select"
-                                    value={needCategory}
-                                    onChange={(e) => setNeedCategory(e.target.value)}
-                                >
-                                    <option value="">Select category</option>
-                                    <option value="Healthcare">Healthcare</option>
-                                    <option value="Education">Education</option>
-                                    <option value="Water">Water</option>
-                                    <option value="Livelihood">Livelihood</option>
-                                    <option value="Infrastructure">Infrastructure</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label>Location</label>
-                                <input
-                                    type="text"
-                                    placeholder="Village/Town, District, State"
-                                    className="form-input"
-                                    value={needLocation}
-                                    onChange={(e) => setNeedLocation(e.target.value)}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Description</label>
-                                <textarea
-                                    placeholder="Explain the problem and how many people would benefit..."
-                                    rows="4"
-                                    className="form-textarea"
-                                    value={needDescription}
-                                    onChange={(e) => setNeedDescription(e.target.value)}
-                                ></textarea>
-                            </div>
-                            <div className="modal-actions">
-                                <button
-                                    type="button"
-                                    className="btn-cancel"
-                                    onClick={() => setIsPostModalOpen(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button type="submit" className="btn-submit">
-                                    Submit Need
-                                </button>
-                            </div>
-                        </form>
+                                }}
+                            >
+                                <div className="form-group">
+                                    <label>What does your community need?</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., Mobile health clinic for regular checkups"
+                                        className="form-input"
+                                        value={needTitle}
+                                        onChange={(e) => setNeedTitle(e.target.value)}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Category</label>
+                                    <select
+                                        className="form-select"
+                                        value={needCategory}
+                                        onChange={(e) => setNeedCategory(e.target.value)}
+                                    >
+                                        <option value="">Select category</option>
+                                        <option value="Healthcare">Healthcare</option>
+                                        <option value="Education">Education</option>
+                                        <option value="Water">Water</option>
+                                        <option value="Livelihood">Livelihood</option>
+                                        <option value="Infrastructure">Infrastructure</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Location</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Village/Town, District, State"
+                                        className="form-input"
+                                        value={needLocation}
+                                        onChange={(e) => setNeedLocation(e.target.value)}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Description</label>
+                                    <textarea
+                                        placeholder="Explain the problem and how many people would benefit..."
+                                        rows="4"
+                                        className="form-textarea"
+                                        value={needDescription}
+                                        onChange={(e) => setNeedDescription(e.target.value)}
+                                    ></textarea>
+                                </div>
+                                <div className="modal-actions">
+                                    <button
+                                        type="button"
+                                        className="btn-cancel"
+                                        onClick={() => setIsPostModalOpen(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn-submit">
+                                        Submit Need
+                                    </button>
+                                </div>
+                            </form>
                         )}
                     </div>
                 </div>

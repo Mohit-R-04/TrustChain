@@ -41,17 +41,20 @@
 }
 
 .stat-card {
-    background: rgba(30, 41, 59, 0.6);
+    background: rgba(20, 25, 35, 0.95);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(167, 139, 250, 0.3);
     border-radius: 20px;
     padding: 32px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    /* Changed from center to accommodate wrapping */
+    flex-wrap: wrap;
+    /* Allow wrapping */
     gap: 20px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
-    overflow: hidden;
+    /* overflow: hidden; Removed to prevent clipping of long values */
 }
 
 .stat-card::before {
@@ -96,16 +99,16 @@
 }
 
 .stat-content h3 {
-    font-size: 14px;
-    font-weight: 500;
-    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 600;
+    color: #cbd5e1;
     margin: 0 0 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .stat-value {
-    font-size: 36px;
+    font-size: 28px;
     font-weight: 700;
     color: #ffffff;
     margin: 0;
@@ -113,6 +116,9 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    word-break: break-all;
+    /* Ensure wrapping for long numbers */
+    line-height: 1.2;
 }
 
 .action-section {
@@ -120,14 +126,14 @@
     z-index: 1;
     max-width: 1200px;
     margin: 0 auto;
-    background: rgba(30, 41, 59, 0.6);
+    background: rgba(15, 15, 20, 0.95);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(167, 139, 250, 0.3);
     border-radius: 20px;
     padding: 40px;
 }
 
-.action-section + .action-section {
+.action-section+.action-section {
     margin-top: 24px;
 }
 
@@ -369,7 +375,8 @@ table {
     color: #e2e8f0;
 }
 
-th, td {
+th,
+td {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -418,7 +425,9 @@ tr:hover {
     font-weight: 500;
 }
 
-.status-badge.accepted, .status-badge.verified, .status-badge.success {
+.status-badge.accepted,
+.status-badge.verified,
+.status-badge.success {
     background: rgba(16, 185, 129, 0.2);
     color: #34d399;
 }
@@ -428,7 +437,8 @@ tr:hover {
     color: #fbbf24;
 }
 
-.status-badge.failed, .status-badge.rejected {
+.status-badge.failed,
+.status-badge.rejected {
     background: rgba(239, 68, 68, 0.2);
     color: #f87171;
 }
@@ -449,7 +459,8 @@ tr:hover {
     gap: 8px;
 }
 
-.btn-accept, .btn-reject {
+.btn-accept,
+.btn-reject {
     padding: 6px 12px;
     border-radius: 6px;
     font-size: 12px;

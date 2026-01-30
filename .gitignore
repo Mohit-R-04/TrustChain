@@ -2,6 +2,10 @@ trustchain/firebase-key.json
 node_modules/
 build/
 .env
+.env.local
+.env.production
+.env.development
+
 # Maven / local
 **/.home/
 **/.m2/
@@ -15,3 +19,12 @@ node_modules/
 # Blockchain build artifacts
 blockchain/artifacts/
 blockchain/cache/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
