@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import './StripePayment.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
@@ -8,6 +8,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const StripePayment = () => {
     const { state } = useLocation();
     const navigate = useNavigate();
+    const { user } = useUser();
     const { getToken } = useAuth();
     const [amountInr, setAmountInr] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('card');
@@ -229,7 +230,12 @@ const StripePayment = () => {
                 }
                 setSuccess(true);
                 setTimeout(() => {
-                    navigate('/donor-dashboard');
+                    const role = user?.publicMetadata?.role || user?.unsafeMetadata?.role;
+                    if (role === 'government') {
+                        navigate('/government-dashboard');
+                    } else {
+                        navigate('/donor-dashboard');
+                    }
                 }, 3000);
             } else {
                 setError(data.message || 'Payment failed');
@@ -260,7 +266,7 @@ const StripePayment = () => {
                     <h2>TrustChain Secure Payment</h2>
                     <p>Powered by Stripe (Simulated)</p>
                 </div>
-                
+
                 <div className="order-summary">
                     <h3>Donation for: {schemeName}</h3>
                 </div>
@@ -268,13 +274,13 @@ const StripePayment = () => {
                 {error && <div className="stripe-error">{error}</div>}
 
                 <div className="payment-method-selector">
-                    <button 
+                    <button
                         className={`method-btn ${paymentMethod === 'card' ? 'active' : ''}`}
                         onClick={() => setPaymentMethod('card')}
                     >
                         💳 Card
                     </button>
-                    <button 
+                    <button
                         className={`method-btn ${paymentMethod === 'upi' ? 'active' : ''}`}
                         onClick={() => setPaymentMethod('upi')}
                     >
@@ -285,13 +291,13 @@ const StripePayment = () => {
                 <form onSubmit={handlePayment}>
                     <div className="stripe-form-group">
                         <label>Amount (₹)</label>
-                        <input 
-                            type="number" 
-                            value={amountInr} 
-                            onChange={(e) => setAmountInr(e.target.value)} 
-                            min="1" 
+                        <input
+                            type="number"
+                            value={amountInr}
+                            onChange={(e) => setAmountInr(e.target.value)}
+                            min="1"
                             step="1"
-                            required 
+                            required
                             placeholder="0"
                         />
                         <div style={{ marginTop: '8px', color: '#94a3b8', fontSize: '13px' }}>
@@ -308,28 +314,28 @@ const StripePayment = () => {
                         <div className="stripe-form-group">
                             <label>Card Information</label>
                             <div className="card-element-mock">
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     name="number"
-                                    placeholder="0000 0000 0000 0000" 
+                                    placeholder="0000 0000 0000 0000"
                                     className="card-number"
                                     value={cardDetails.number}
                                     onChange={handleCardChange}
                                     maxLength="19"
                                 />
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     name="expiry"
-                                    placeholder="MM/YY" 
+                                    placeholder="MM/YY"
                                     className="card-expiry"
                                     value={cardDetails.expiry}
                                     onChange={handleCardChange}
                                     maxLength="5"
                                 />
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     name="cvc"
-                                    placeholder="CVC" 
+                                    placeholder="CVC"
                                     className="card-cvc"
                                     value={cardDetails.cvc}
                                     onChange={handleCardChange}
@@ -340,13 +346,13 @@ const StripePayment = () => {
                     ) : (
                         <div className="stripe-form-group">
                             <label>UPI ID</label>
-                            <input 
-                                type="text" 
-                                placeholder="username@bank" 
+                            <input
+                                type="text"
+                                placeholder="username@bank"
                                 value={upiId}
                                 onChange={(e) => setUpiId(e.target.value)}
                             />
-                            <small style={{color: '#666', marginTop: '5px', display: 'block'}}>
+                            <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
                                 Enter any valid UPI ID (e.g., user@okhdfcbank)
                             </small>
                         </div>

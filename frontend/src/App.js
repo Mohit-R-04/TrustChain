@@ -238,7 +238,7 @@ function App() {
             <Route
               path="/payment"
               element={
-                <ProtectedRoute allowedRole="donor">
+                <ProtectedRoute allowedRole={['donor', 'government']}>
                   <StripePayment />
                 </ProtectedRoute>
               }

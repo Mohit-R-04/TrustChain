@@ -43,16 +43,25 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     const userRole = user.publicMetadata?.role || user.unsafeMetadata?.role;
 
     // Check if user just assigned this role (stored temporarily during signup)
+    // Check if user just assigned this role (stored temporarily during signup)
     const justAssignedRole = sessionStorage.getItem('justAssignedRole');
 
+    const isRoleAllowed = Array.isArray(allowedRole)
+        ? allowedRole.includes(userRole)
+        : userRole === allowedRole;
+
+    const isJustAssigned = Array.isArray(allowedRole)
+        ? allowedRole.includes(justAssignedRole)
+        : justAssignedRole === allowedRole;
+
     // If user just assigned this role, allow access and clear the flag
-    if (justAssignedRole === allowedRole) {
+    if (isJustAssigned) {
         sessionStorage.removeItem('justAssignedRole');
         return children;
     }
 
     // Check if user has the allowed role
-    if (userRole !== allowedRole) {
+    if (!isRoleAllowed) {
         // User has a different role, redirect to their dashboard
         if (userRole && userRole !== 'citizen') {
             return <Navigate to={`/${userRole}-dashboard`} replace />;
