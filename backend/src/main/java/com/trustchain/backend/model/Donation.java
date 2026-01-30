@@ -37,6 +37,9 @@ public class Donation {
     @Column(name = "status")
     private String status;
 
+    @Column(name = "ipfs_cid", length = 300)
+    private String ipfsCid;
+
     // Constructors
     public Donation() {
     }
@@ -112,5 +115,13 @@ public class Donation {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getIpfsCid() {
+        return ipfsCid;
+    }
+
+    public void setIpfsCid(String ipfsCid) {
+        this.ipfsCid = ipfsCid;
     }
 }

@@ -58,6 +58,30 @@ public class IpfsService {
 
         String safeFilename = filename != null && !filename.isBlank() ? filename : "invoice";
         String safeContentType = contentType != null && !contentType.isBlank() ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        return uploadBytes(bytes, safeFilename, safeContentType);
+    }
+
+    public String uploadJson(Object payload, String filename) {
+        if (payload == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payload is required");
+        }
+        String safeFilename = filename != null && !filename.isBlank() ? filename : "payload.json";
+        byte[] bytes;
+        try {
+            bytes = objectMapper.writeValueAsBytes(payload);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to serialize JSON payload");
+        }
+        return uploadBytes(bytes, safeFilename, MediaType.APPLICATION_JSON_VALUE);
+    }
+
+    public String uploadBytes(byte[] bytes, String filename, String contentType) {
+        if (bytes == null || bytes.length == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File bytes are required");
+        }
+
+        String safeFilename = filename != null && !filename.isBlank() ? filename : "file";
+        String safeContentType = contentType != null && !contentType.isBlank() ? contentType : MediaType.APPLICATION_OCTET_STREAM_VALUE;
 
         ByteArrayResource resource = new ByteArrayResource(bytes) {
             @Override

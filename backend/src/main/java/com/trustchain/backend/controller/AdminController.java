@@ -1,6 +1,7 @@
 package com.trustchain.backend.controller;
 
 import com.trustchain.backend.service.ClerkInvitationService;
+import com.trustchain.backend.service.IpfsTransactionBackfillService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,9 @@ public class AdminController {
 
     @Autowired
     private ClerkInvitationService clerkInvitationService;
+
+    @Autowired
+    private IpfsTransactionBackfillService ipfsTransactionBackfillService;
 
     /**
      * Send an invitation to a user
@@ -70,5 +74,12 @@ public class AdminController {
                             "success", false,
                             "error", "Failed to revoke invitation"));
         }
+    }
+
+    @PostMapping("/backfill/ipfs-transactions")
+    public ResponseEntity<?> backfillIpfsTransactions(@RequestParam(defaultValue = "25") int iterations) {
+        int safeIterations = Math.min(Math.max(1, iterations), 200);
+        Map<String, Object> result = ipfsTransactionBackfillService.backfill(safeIterations);
+        return ResponseEntity.ok(result);
     }
 }

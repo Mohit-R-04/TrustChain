@@ -11,17 +11,23 @@ import com.trustchain.backend.repository.DemoDonorContributionRepository;
 import com.trustchain.backend.repository.DemoEscrowStateRepository;
 import com.trustchain.backend.repository.DemoSchemeBalanceRepository;
 import com.trustchain.backend.repository.DemoWalletBalanceRepository;
+import com.trustchain.backend.service.IpfsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 @ConditionalOnProperty(prefix = "blockchain", name = "demo-mode", havingValue = "true")
 public class DemoEscrowLedgerService {
     private static final String STATE_KEY = "default";
+    private static final Logger log = LoggerFactory.getLogger(DemoEscrowLedgerService.class);
 
     @Autowired
     private BlockchainProperties properties;
@@ -40,6 +46,9 @@ public class DemoEscrowLedgerService {
 
     @Autowired
     private DemoWalletBalanceRepository walletBalanceRepository;
+
+    @Autowired(required = false)
+    private IpfsService ipfsService;
 
     public BigInteger getContractBalanceWei() {
         DemoEscrowState state = stateRepository.findById(STATE_KEY).orElse(null);
@@ -118,6 +127,7 @@ public class DemoEscrowLedgerService {
         e.setSchemeId(schemeId.toString());
         e.setFromAddress(donorAddress);
         e.setAmountWei(amountWei.toString());
+        e.setIpfsHash(tryUploadTxDetails("FundsDeposited", txHash, schemeUuid, schemeId, donorAddress, null, amountWei, null));
         eventRepository.save(e);
         return txHash;
     }
@@ -188,7 +198,30 @@ public class DemoEscrowLedgerService {
         e.setFromAddress("demo-escrow");
         e.setVendorAddress(normalizedTo);
         e.setAmountWei(amountWei.toString());
+        e.setIpfsHash(tryUploadTxDetails("FundsReleased", txHash, schemeUuid, schemeId, "demo-escrow", normalizedTo, amountWei, invoiceId));
         eventRepository.save(e);
         return txHash;
+    }
+
+    private String tryUploadTxDetails(String eventName, String txHash, UUID schemeUuid, BigInteger schemeId, String from, String to, BigInteger amountWei, UUID invoiceId) {
+        if (ipfsService == null) {
+            return null;
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "DEMO_LEDGER_TX");
+        payload.put("eventName", eventName);
+        payload.put("txHash", txHash);
+        payload.put("schemeUuid", schemeUuid != null ? schemeUuid.toString() : null);
+        payload.put("schemeId", schemeId != null ? schemeId.toString() : null);
+        payload.put("from", from);
+        payload.put("to", to);
+        payload.put("amountWei", amountWei != null ? amountWei.toString() : null);
+        payload.put("invoiceId", invoiceId != null ? invoiceId.toString() : null);
+        try {
+            return ipfsService.uploadJson(payload, "tx-" + txHash + ".json");
+        } catch (Exception e) {
+            log.warn("Failed to persist demo ledger transaction details to IPFS for txHash={}", txHash);
+            return null;
+        }
     }
 }

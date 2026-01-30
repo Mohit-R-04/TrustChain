@@ -26,17 +26,19 @@ import static org.mockito.Mockito.*;
 public class InvoicePayoutServiceTest {
 
     @Test
-    void payoutToNgoAfterGovernmentAcceptance_usesAllocatedBudgetAndRecordsRelease() {
+    void payoutToNgoAfterGovernmentAcceptance_usesInvoiceAmountAndRecordsRelease() {
         BlockchainProperties blockchainProperties = mock(BlockchainProperties.class);
         DemoEscrowLedgerService demoLedger = mock(DemoEscrowLedgerService.class);
         InvoicePayoutRepository payoutRepository = mock(InvoicePayoutRepository.class);
         NgoVendorRepository ngoVendorRepository = mock(NgoVendorRepository.class);
+        IpfsService ipfsService = mock(IpfsService.class);
 
         InvoicePayoutService service = new InvoicePayoutService();
         ReflectionTestUtils.setField(service, "blockchainProperties", blockchainProperties);
         ReflectionTestUtils.setField(service, "demoLedger", demoLedger);
         ReflectionTestUtils.setField(service, "payoutRepository", payoutRepository);
         ReflectionTestUtils.setField(service, "ngoVendorRepository", ngoVendorRepository);
+        ReflectionTestUtils.setField(service, "ipfsService", ipfsService);
 
         when(blockchainProperties.isEnabled()).thenReturn(true);
         when(blockchainProperties.isDemoMode()).thenReturn(true);
@@ -58,29 +60,33 @@ public class InvoicePayoutServiceTest {
         Vendor vendor = new Vendor();
         vendor.setVendorId(UUID.fromString("55555555-5555-5555-5555-555555555555"));
         vendor.setUserId("vendor_user_1");
+        vendor.setWalletAddress("");
 
         Invoice invoice = new Invoice();
         invoice.setInvoiceId(UUID.fromString("66666666-6666-6666-6666-666666666666"));
         invoice.setManage(manage);
         invoice.setVendor(vendor);
+        invoice.setAmount(150.0);
 
         NgoVendor order = new NgoVendor();
         order.setAllocatedBudget(200.0);
         when(ngoVendorRepository.findByManage_ManageIdAndVendor_UserId(eq(manage.getManageId()), eq("vendor_user_1")))
                 .thenReturn(Optional.of(order));
 
-        String expectedTo = BlockchainAddressUtil.userIdToDemoAddress("ngo_user_1");
-        BigInteger expectedWei = new BigInteger("20000000000000");
+        String expectedTo = BlockchainAddressUtil.userIdToDemoAddress("vendor_user_1");
+        BigInteger expectedWei = new BigInteger("15000000000000");
         when(demoLedger.recordRelease(eq(schemeUuid), any(), eq(expectedTo), eq(expectedWei), eq(invoice.getInvoiceId())))
                 .thenReturn("demo-tx");
 
         when(payoutRepository.findTopByInvoiceIdOrderByCreatedAtDesc(eq(invoice.getInvoiceId()))).thenReturn(Optional.empty());
         when(payoutRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(ipfsService.uploadJson(any(), any())).thenReturn("bafy-payout-cid");
 
         var payout = service.payoutToNgoAfterGovernmentAcceptance(invoice);
 
         assertEquals("SUCCESS", payout.getStatus());
         assertEquals("demo-tx", payout.getTransactionHash());
+        assertEquals("bafy-payout-cid", payout.getIpfsCid());
         assertEquals(expectedWei.toString(), payout.getAmountWei());
         verify(demoLedger, times(1)).recordRelease(eq(schemeUuid), any(), eq(expectedTo), eq(expectedWei), eq(invoice.getInvoiceId()));
         verify(payoutRepository, times(1)).save(any());

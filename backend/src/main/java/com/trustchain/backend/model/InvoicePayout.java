@@ -48,6 +48,9 @@ public class InvoicePayout {
     @Column(name = "tx_hash", length = 120)
     private String transactionHash;
 
+    @Column(name = "ipfs_cid", length = 300)
+    private String ipfsCid;
+
     @Column(name = "status", length = 40)
     private String status;
 
@@ -140,6 +143,14 @@ public class InvoicePayout {
 
     public void setTransactionHash(String transactionHash) {
         this.transactionHash = transactionHash;
+    }
+
+    public String getIpfsCid() {
+        return ipfsCid;
+    }
+
+    public void setIpfsCid(String ipfsCid) {
+        this.ipfsCid = ipfsCid;
     }
 
     public String getStatus() {

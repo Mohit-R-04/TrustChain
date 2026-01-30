@@ -14,6 +14,8 @@ public interface DonationRepository extends JpaRepository<Donation, UUID> {
     List<Donation> findByDonor_Name(String name);
     List<Donation> findByDonor_UserId(String userId);
     List<Donation> findByGovernment_UserId(String userId);
+    List<Donation> findByScheme_SchemeIdOrderByTimestampAsc(UUID schemeId);
+    List<Donation> findTop200ByIpfsCidIsNullOrderByTimestampAsc();
 
     @Query("select coalesce(sum(d.amount), 0) from Donation d")
     Double sumAllAmounts();

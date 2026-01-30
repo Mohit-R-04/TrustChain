@@ -6,6 +6,7 @@ import com.trustchain.backend.model.InvoicePayout;
 import com.trustchain.backend.model.Ngo;
 import com.trustchain.backend.model.NgoVendor;
 import com.trustchain.backend.model.Scheme;
+import com.trustchain.backend.model.Vendor;
 import com.trustchain.backend.repository.InvoicePayoutRepository;
 import com.trustchain.backend.repository.NgoVendorRepository;
 import com.trustchain.backend.service.blockchain.BlockchainAddressUtil;
@@ -15,9 +16,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,6 +30,7 @@ import java.util.UUID;
 public class InvoicePayoutService {
 
     private static final BigDecimal INR_TO_WEI_SCALE = new BigDecimal("100000000000");
+    private static final Logger log = LoggerFactory.getLogger(InvoicePayoutService.class);
 
     @Autowired(required = false)
     private BlockchainProperties blockchainProperties;
@@ -37,6 +43,9 @@ public class InvoicePayoutService {
 
     @Autowired
     private NgoVendorRepository ngoVendorRepository;
+
+    @Autowired
+    private IpfsService ipfsService;
 
     public InvoicePayout payoutToNgoAfterGovernmentAcceptance(Invoice invoice) {
         if (invoice == null || invoice.getInvoiceId() == null) {
@@ -73,12 +82,16 @@ public class InvoicePayoutService {
         }
 
         Ngo ngo = invoice.getManage().getNgo();
-        String toAddress = ngo.getWalletAddress();
+        Vendor vendor = invoice.getVendor();
+
+        String toAddress = vendor.getWalletAddress();
         if (toAddress == null || toAddress.isBlank()) {
-            toAddress = BlockchainAddressUtil.userIdToDemoAddress(ngo.getUserId());
+            toAddress = BlockchainAddressUtil.userIdToDemoAddress(vendor.getUserId());
         }
 
-        BigInteger amountWei = BigDecimal.valueOf(allocatedBudgetInr).multiply(INR_TO_WEI_SCALE).toBigInteger();
+        Double invoiceAmountInr = invoice.getAmount();
+        Double payoutAmountInr = invoiceAmountInr != null && invoiceAmountInr > 0 ? invoiceAmountInr : allocatedBudgetInr;
+        BigInteger amountWei = BigDecimal.valueOf(payoutAmountInr).multiply(INR_TO_WEI_SCALE).toBigInteger();
 
         if (blockchainProperties == null || !blockchainProperties.isEnabled() || !blockchainProperties.isDemoMode() || demoLedger == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Demo escrow is not configured");
@@ -100,14 +113,41 @@ public class InvoicePayoutService {
         payout.setSchemeId(schemeUuid);
         payout.setManageId(invoice.getManage().getManageId());
         payout.setNgoId(ngo.getNgoId());
-        payout.setVendorId(invoice.getVendor().getVendorId());
-        payout.setAmountInr(allocatedBudgetInr);
+        payout.setVendorId(vendor.getVendorId());
+        payout.setAmountInr(payoutAmountInr);
         payout.setAmountWei(amountWei.toString());
         payout.setFromAddress("demo-escrow");
         payout.setToAddress(toAddress);
         payout.setTransactionHash(txHash);
         payout.setStatus("SUCCESS");
+        payout.setIpfsCid(tryUploadPayoutDetailsToIpfs(payout));
         return payoutRepository.save(payout);
+    }
+
+    private String tryUploadPayoutDetailsToIpfs(InvoicePayout payout) {
+        if (payout == null || payout.getInvoiceId() == null || payout.getTransactionHash() == null) {
+            return null;
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "INVOICE_PAYOUT");
+        payload.put("invoiceId", payout.getInvoiceId().toString());
+        payload.put("schemeId", payout.getSchemeId() != null ? payout.getSchemeId().toString() : null);
+        payload.put("manageId", payout.getManageId() != null ? payout.getManageId().toString() : null);
+        payload.put("ngoId", payout.getNgoId() != null ? payout.getNgoId().toString() : null);
+        payload.put("vendorId", payout.getVendorId() != null ? payout.getVendorId().toString() : null);
+        payload.put("amountInr", payout.getAmountInr());
+        payload.put("amountWei", payout.getAmountWei());
+        payload.put("fromAddress", payout.getFromAddress());
+        payload.put("toAddress", payout.getToAddress());
+        payload.put("txHash", payout.getTransactionHash());
+        payload.put("mode", "demo");
+
+        try {
+            return ipfsService.uploadJson(payload, "invoice-payout-" + payout.getInvoiceId() + "-" + payout.getTransactionHash() + ".json");
+        } catch (Exception e) {
+            log.warn("Failed to persist invoice payout transaction details to IPFS for invoiceId={}, txHash={}", payout.getInvoiceId(), payout.getTransactionHash());
+            return null;
+        }
     }
 }
 

@@ -12,5 +12,8 @@ public interface BlockchainEventRepository extends JpaRepository<BlockchainEvent
     List<BlockchainEvent> findTop50ByOrderByCreatedAtDesc();
     List<BlockchainEvent> findTop50ByFromAddressOrderByCreatedAtDesc(String fromAddress);
     boolean existsByTransactionHashAndEventNameAndBlockNumber(String transactionHash, String eventName, Long blockNumber);
+    Optional<BlockchainEvent> findTopByTransactionHashAndEventNameAndBlockNumber(String transactionHash, String eventName, Long blockNumber);
     Optional<BlockchainEvent> findTopByEventNameAndInvoiceIdOrderByCreatedAtDesc(String eventName, String invoiceId);
+    List<BlockchainEvent> findBySchemeIdAndEventNameOrderByCreatedAtAsc(String schemeId, String eventName);
+    List<BlockchainEvent> findTop200ByIpfsHashIsNullAndEventNameInOrderByCreatedAtAsc(List<String> eventNames);
 }

@@ -30,6 +30,7 @@ public class DonationServiceTest {
         SchemeRepository schemeRepository = mock(SchemeRepository.class);
         DonorRepository donorRepository = mock(DonorRepository.class);
         PaymentService paymentService = mock(PaymentService.class);
+        IpfsService ipfsService = mock(IpfsService.class);
         BlockchainProperties blockchainProperties = mock(BlockchainProperties.class);
         DemoEscrowLedgerService demoLedger = mock(DemoEscrowLedgerService.class);
 
@@ -38,6 +39,7 @@ public class DonationServiceTest {
         ReflectionTestUtils.setField(service, "schemeRepository", schemeRepository);
         ReflectionTestUtils.setField(service, "donorRepository", donorRepository);
         ReflectionTestUtils.setField(service, "paymentService", paymentService);
+        ReflectionTestUtils.setField(service, "ipfsService", ipfsService);
         ReflectionTestUtils.setField(service, "blockchainProperties", blockchainProperties);
         ReflectionTestUtils.setField(service, "demoLedger", demoLedger);
 
@@ -54,10 +56,19 @@ public class DonationServiceTest {
 
         when(paymentService.processPayment(any(), any(), any())).thenReturn(true);
         when(paymentService.generateTransactionReference()).thenReturn("tx_ref");
-        when(donationRepository.save(any(Donation.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(donationRepository.save(any(Donation.class))).thenAnswer(inv -> {
+            Donation d = inv.getArgument(0);
+            if (d.getDonationId() == null) {
+                d.setDonationId(UUID.randomUUID());
+            }
+            return d;
+        });
+        when(ipfsService.uploadJson(any(), any())).thenReturn("bafy-test-cid");
 
         when(blockchainProperties.isEnabled()).thenReturn(true);
         when(blockchainProperties.isDemoMode()).thenReturn(true);
+        when(demoLedger.recordDeposit(eq(schemeUuid), any(BigInteger.class), eq(BlockchainAddressUtil.userIdToDemoAddress("user_123")), any(BigInteger.class)))
+                .thenReturn("demo-deposit-tx");
 
         DonationRequest request = new DonationRequest();
         request.setSchemeId(schemeUuid);
@@ -70,7 +81,8 @@ public class DonationServiceTest {
         BigInteger expectedWei = new BigInteger("10000000000000000");
         verify(demoLedger, times(1)).recordDeposit(eq(schemeUuid), any(BigInteger.class), eq(BlockchainAddressUtil.userIdToDemoAddress("user_123")), eq(expectedWei));
 
-        verify(donationRepository, times(1)).save(any(Donation.class));
+        verify(ipfsService, times(1)).uploadJson(any(), any());
+        verify(donationRepository, atLeastOnce()).save(any(Donation.class));
         verify(paymentService, times(1)).processPayment(eq(100000.0), eq("INR"), eq("tok_visa"));
     }
 }

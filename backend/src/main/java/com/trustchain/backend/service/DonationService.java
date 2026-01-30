@@ -16,6 +16,8 @@ import com.trustchain.backend.service.blockchain.DemoEscrowLedgerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -32,6 +34,8 @@ import java.util.HashMap;
 @Service
 public class DonationService {
 
+    private static final Logger log = LoggerFactory.getLogger(DonationService.class);
+
     @Autowired
     private DonationRepository donationRepository;
 
@@ -46,6 +50,9 @@ public class DonationService {
 
     @Autowired
     private PaymentService paymentService;
+
+    @Autowired
+    private IpfsService ipfsService;
 
     @Autowired(required = false)
     private BlockchainProperties blockchainProperties;
@@ -114,7 +121,8 @@ public class DonationService {
         donation.setStatus("COMPLETED");
         Donation saved = donationRepository.save(donation);
 
-        recordDemoDepositIfEnabled(scheme, request.getAmount(), donorAuthId);
+        String demoDepositTxHash = recordDemoDepositIfEnabled(scheme, request.getAmount(), donorAuthId);
+        tryAttachDonationIpfsCid(saved, donorAuthId, null, demoDepositTxHash);
 
         return saved;
     }
@@ -146,7 +154,8 @@ public class DonationService {
         donation.setStatus("COMPLETED");
         Donation saved = donationRepository.save(donation);
 
-        recordDemoDepositIfEnabled(scheme, request.getAmount(), govtAuthId);
+        String demoDepositTxHash = recordDemoDepositIfEnabled(scheme, request.getAmount(), govtAuthId);
+        tryAttachDonationIpfsCid(saved, null, govtAuthId, demoDepositTxHash);
 
         return saved;
     }
@@ -168,17 +177,47 @@ public class DonationService {
         return scheme;
     }
 
-    private void recordDemoDepositIfEnabled(Scheme scheme, Double amountInr, String userId) {
+    private String recordDemoDepositIfEnabled(Scheme scheme, Double amountInr, String userId) {
         if (blockchainProperties == null || !blockchainProperties.isEnabled() || !blockchainProperties.isDemoMode() || demoLedger == null) {
-            return;
+            return null;
         }
         BigDecimal inr = BigDecimal.valueOf(amountInr != null ? amountInr : 0d);
         if (inr.signum() <= 0) {
-            return;
+            return null;
         }
         BigInteger amountWei = inr.multiply(new BigDecimal("100000000000")).toBigInteger();
         BigInteger schemeId = BlockchainIdUtil.uuidToUint256(scheme.getSchemeId());
-        demoLedger.recordDeposit(scheme.getSchemeId(), schemeId, BlockchainAddressUtil.userIdToDemoAddress(userId), amountWei);
+        return demoLedger.recordDeposit(scheme.getSchemeId(), schemeId, BlockchainAddressUtil.userIdToDemoAddress(userId), amountWei);
+    }
+
+    private void tryAttachDonationIpfsCid(Donation donation, String donorUserId, String governmentUserId, String demoDepositTxHash) {
+        if (donation == null || donation.getDonationId() == null) {
+            return;
+        }
+        if (donation.getIpfsCid() != null && !donation.getIpfsCid().isBlank()) {
+            return;
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "DONATION_PAYMENT");
+        payload.put("donationId", donation.getDonationId().toString());
+        payload.put("schemeId", donation.getScheme() != null ? String.valueOf(donation.getScheme().getSchemeId()) : null);
+        payload.put("schemeName", donation.getScheme() != null ? donation.getScheme().getSchemeName() : null);
+        payload.put("amountInr", donation.getAmount());
+        payload.put("currency", "INR");
+        payload.put("transactionRef", donation.getTransactionRef());
+        payload.put("timestamp", donation.getTimestamp() != null ? donation.getTimestamp().toString() : null);
+        payload.put("donorUserId", donorUserId);
+        payload.put("governmentUserId", governmentUserId);
+        payload.put("demoDepositTxHash", demoDepositTxHash);
+
+        try {
+            String cid = ipfsService.uploadJson(payload, "donation-" + donation.getDonationId() + ".json");
+            donation.setIpfsCid(cid);
+            donationRepository.save(donation);
+        } catch (Exception e) {
+            log.warn("Failed to persist donation transaction details to IPFS for donationId={}", donation.getDonationId());
+        }
     }
 
     public Donation createDonation(Donation donation) {

@@ -10,7 +10,6 @@ public class PaymentService {
     public boolean processPayment(Double amount, String currency, String token) {
         // Simulate Stripe payment processing
         // In a real application, this would interact with Stripe API
-        System.out.println("Processing payment of " + amount + " " + currency + " with token " + token);
         
         // Simulate success for now (80% success rate or always success for demo)
         return true; 

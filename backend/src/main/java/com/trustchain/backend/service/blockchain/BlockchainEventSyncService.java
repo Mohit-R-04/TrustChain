@@ -5,6 +5,7 @@ import com.trustchain.backend.model.BlockchainEvent;
 import com.trustchain.backend.model.BlockchainSyncState;
 import com.trustchain.backend.repository.BlockchainEventRepository;
 import com.trustchain.backend.repository.BlockchainSyncStateRepository;
+import com.trustchain.backend.service.IpfsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,11 +32,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @ConditionalOnProperty(prefix = "blockchain", name = "enabled", havingValue = "true")
 public class BlockchainEventSyncService {
     private static final String SYNC_KEY = "trustchain-escrow";
+    private static final Logger log = LoggerFactory.getLogger(BlockchainEventSyncService.class);
 
     private static final Event FUNDS_DEPOSITED = new Event("FundsDeposited", Arrays.asList(
             new TypeReference<Uint256>(true) {},
@@ -116,6 +122,9 @@ public class BlockchainEventSyncService {
     @Autowired
     private BlockchainSyncStateRepository syncStateRepository;
 
+    @Autowired(required = false)
+    private IpfsService ipfsService;
+
     @Scheduled(fixedDelayString = "${blockchain.poll-interval-ms:10000}")
     public void sync() throws Exception {
         String contract = properties.getContractAddress();
@@ -194,10 +203,49 @@ public class BlockchainEventSyncService {
         e.setTransactionHash(log.getTransactionHash());
         e.setBlockNumber(log.getBlockNumber() != null ? log.getBlockNumber().longValue() : null);
 
+        if (e.getIpfsHash() == null || e.getIpfsHash().isBlank()) {
+            if ("FundsDeposited".equalsIgnoreCase(e.getEventName()) || "PaymentReleased".equalsIgnoreCase(e.getEventName())) {
+                String cid = tryUploadTxDetails(e);
+                if (cid != null && !cid.isBlank()) {
+                    e.setIpfsHash(cid);
+                }
+            }
+        }
+
         if (eventRepository.existsByTransactionHashAndEventNameAndBlockNumber(e.getTransactionHash(), e.getEventName(), e.getBlockNumber())) {
+            if (e.getIpfsHash() != null && !e.getIpfsHash().isBlank()) {
+                eventRepository.findTopByTransactionHashAndEventNameAndBlockNumber(e.getTransactionHash(), e.getEventName(), e.getBlockNumber())
+                        .filter(existing -> existing.getIpfsHash() == null || existing.getIpfsHash().isBlank())
+                        .ifPresent(existing -> {
+                            existing.setIpfsHash(e.getIpfsHash());
+                            eventRepository.save(existing);
+                        });
+            }
             return;
         }
         eventRepository.save(e);
+    }
+
+    private String tryUploadTxDetails(BlockchainEvent e) {
+        if (ipfsService == null || e == null || e.getTransactionHash() == null || e.getTransactionHash().isBlank()) {
+            return null;
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "CHAIN_TX");
+        payload.put("eventName", e.getEventName());
+        payload.put("txHash", e.getTransactionHash());
+        payload.put("schemeId", e.getSchemeId());
+        payload.put("milestoneId", e.getMilestoneId());
+        payload.put("from", e.getFromAddress());
+        payload.put("to", e.getVendorAddress());
+        payload.put("amountWei", e.getAmountWei());
+        payload.put("blockNumber", e.getBlockNumber());
+        try {
+            return ipfsService.uploadJson(payload, "tx-" + e.getTransactionHash() + ".json");
+        } catch (Exception ex) {
+            log.warn("Failed to persist chain transaction details to IPFS for txHash={}", e.getTransactionHash());
+            return null;
+        }
     }
 
     private Optional<BlockchainEvent> decodeFundsDeposited(String sig, Log log) {
