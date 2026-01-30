@@ -21,7 +21,7 @@ const VendorDashboard = () => {
     const [invoices, setInvoices] = useState([]);
     const [payments, setPayments] = useState([]);
 
-    const [activeModal, setActiveModal] = useState(null); // 'invoice', 'orders', 'payments'
+    const [activeModal, setActiveModal] = useState(null);
     const [invoiceForm, setInvoiceForm] = useState({
         manageId: '',
         amount: '',
@@ -29,6 +29,8 @@ const VendorDashboard = () => {
     });
 
     const [vendorDetails, setVendorDetails] = useState(null);
+    const [changeRequestForm, setChangeRequestForm] = useState({ invoiceId: '', reason: '' });
+    const [changeUploadForm, setChangeUploadForm] = useState({ invoiceId: '', file: null });
 
     // Debugging
     useEffect(() => {
@@ -201,6 +203,66 @@ const VendorDashboard = () => {
         }
     };
 
+    const requestInvoiceChange = async (invoiceId, reason) => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/invoice/${invoiceId}/change-request`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setInvoices(prev => prev.map(i => i.invoiceId === updated.invoiceId ? updated : i));
+                setActiveModal('invoices');
+            } else {
+                const errText = await res.text();
+                alert(errText || 'Failed to request invoice change');
+            }
+        } catch (e) {
+            console.error('Error requesting invoice change:', e);
+            alert('Error requesting invoice change');
+        }
+    };
+
+    const uploadChangedInvoice = async (invoiceId, file) => {
+        if (!file) {
+            alert('Please upload the invoice file.');
+            return;
+        }
+        try {
+            const token = await getToken();
+            if (!token) {
+                alert('Not authenticated. Please sign in again.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch(`${API_URL}/api/invoice/${invoiceId}/change-request/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setInvoices(prev => prev.map(i => i.invoiceId === updated.invoiceId ? updated : i));
+                alert('Invoice updated successfully!');
+                setActiveModal('invoices');
+            } else {
+                const errText = await res.text();
+                alert(errText || 'Failed to upload updated invoice');
+            }
+        } catch (e) {
+            console.error('Error uploading updated invoice:', e);
+            alert('Error uploading updated invoice');
+        }
+    };
+
     return (
         <div className="dashboard-container">
             <DashboardHeader title="Vendor Dashboard" role="vendor" />
@@ -264,6 +326,12 @@ const VendorDashboard = () => {
                             onClick={() => setActiveModal('orders')}
                         >
                             View Orders
+                        </button>
+                        <button
+                            className="action-btn secondary"
+                            onClick={() => setActiveModal('invoices')}
+                        >
+                            My Invoices
                         </button>
                         <button 
                             className="action-btn secondary"
@@ -386,6 +454,145 @@ const VendorDashboard = () => {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {activeModal === 'invoices' && (
+                <div className="modal-overlay" onClick={() => setActiveModal(null)}>
+                    <div className="modal-content large-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>My Invoices</h2>
+                            <button className="close-btn" onClick={() => setActiveModal(null)}>×</button>
+                        </div>
+                        <div className="table-container">
+                            {invoices.length === 0 ? (
+                                <p className="empty-state">No invoices found</p>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scheme</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Change Status</th>
+                                            <th>IPFS</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {invoices.map(inv => {
+                                            const status = (inv.status || '').toUpperCase();
+                                            const statusClass = status === 'ACCEPTED' ? 'accepted' : status === 'REJECTED' ? 'rejected' : status === 'NGO_ACCEPTED' ? 'accepted' : 'pending';
+                                            const changeStatus = (inv.changeRequestStatus || '').toUpperCase();
+                                            const gatewayBaseRaw = process.env.REACT_APP_IPFS_GATEWAY_BASE || 'https://gateway.pinata.cloud/ipfs/';
+                                            const gatewayBase = gatewayBaseRaw.endsWith('/') ? gatewayBaseRaw : `${gatewayBaseRaw}/`;
+                                            const ipfsUrl = inv.invoiceIpfsHash ? `${gatewayBase}${inv.invoiceIpfsHash}` : null;
+                                            return (
+                                                <tr key={inv.invoiceId}>
+                                                    <td>{inv.manage?.scheme?.schemeName || inv.manage?.scheme?.name || '-'}</td>
+                                                    <td>₹{Number(inv.amount || 0).toLocaleString()}</td>
+                                                    <td>
+                                                        <span className={`status-badge ${statusClass}`}>{status || 'PENDING'}</span>
+                                                    </td>
+                                                    <td>
+                                                        {changeStatus ? (
+                                                            <span className="status-text">{changeStatus}</span>
+                                                        ) : (
+                                                            <span className="status-text">NONE</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {ipfsUrl ? <a href={ipfsUrl} target="_blank" rel="noreferrer">View</a> : '-'}
+                                                    </td>
+                                                    <td>
+                                                        <div className="action-buttons-small">
+                                                            <button
+                                                                className="action-btn small"
+                                                                onClick={() => {
+                                                                    setChangeRequestForm({ invoiceId: inv.invoiceId, reason: '' });
+                                                                    setActiveModal('changeRequest');
+                                                                }}
+                                                                disabled={changeStatus === 'REQUESTED' || changeStatus === 'NGO_APPROVED' || changeStatus === 'GOVERNMENT_APPROVED'}
+                                                                title={changeStatus === 'REQUESTED' || changeStatus === 'NGO_APPROVED' || changeStatus === 'GOVERNMENT_APPROVED' ? 'Change request already in progress' : ''}
+                                                            >
+                                                                Request Change
+                                                            </button>
+                                                            <button
+                                                                className="action-btn small"
+                                                                onClick={() => {
+                                                                    setChangeUploadForm({ invoiceId: inv.invoiceId, file: null });
+                                                                    setActiveModal('changeUpload');
+                                                                }}
+                                                                disabled={changeStatus !== 'GOVERNMENT_APPROVED'}
+                                                                title={changeStatus !== 'GOVERNMENT_APPROVED' ? 'Waiting for NGO and Government approval' : ''}
+                                                            >
+                                                                Upload New Invoice
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeModal === 'changeRequest' && (
+                <div className="modal-overlay" onClick={() => setActiveModal(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Request Invoice Change</h2>
+                            <button className="close-btn" onClick={() => setActiveModal(null)}>×</button>
+                        </div>
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                requestInvoiceChange(changeRequestForm.invoiceId, changeRequestForm.reason);
+                            }}
+                        >
+                            <div className="form-group">
+                                <label>Reason</label>
+                                <textarea
+                                    value={changeRequestForm.reason}
+                                    onChange={e => setChangeRequestForm({ ...changeRequestForm, reason: e.target.value })}
+                                    required
+                                    rows={4}
+                                />
+                            </div>
+                            <button type="submit" className="submit-btn">Submit Request</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {activeModal === 'changeUpload' && (
+                <div className="modal-overlay" onClick={() => setActiveModal(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Upload New Invoice</h2>
+                            <button className="close-btn" onClick={() => setActiveModal(null)}>×</button>
+                        </div>
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                uploadChangedInvoice(changeUploadForm.invoiceId, changeUploadForm.file);
+                            }}
+                        >
+                            <div className="form-group">
+                                <label>File</label>
+                                <input
+                                    type="file"
+                                    onChange={e => setChangeUploadForm({ ...changeUploadForm, file: e.target.files?.[0] || null })}
+                                    required
+                                />
+                            </div>
+                            <button type="submit" className="submit-btn">Upload</button>
+                        </form>
                     </div>
                 </div>
             )}

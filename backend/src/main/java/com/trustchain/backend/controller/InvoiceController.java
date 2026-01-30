@@ -1,6 +1,7 @@
 package com.trustchain.backend.controller;
 
 import com.trustchain.backend.dto.DecisionRequest;
+import com.trustchain.backend.dto.InvoiceChangeRequestDto;
 import com.trustchain.backend.model.Invoice;
 import com.trustchain.backend.service.InvoiceService;
 import com.trustchain.backend.security.JwtTokenValidator;
@@ -107,6 +108,53 @@ public class InvoiceController {
     @PatchMapping("/{id}/government/decision")
     public ResponseEntity<Invoice> governmentDecision(@PathVariable UUID id, @RequestBody DecisionRequest request, Authentication authentication) {
         return ResponseEntity.ok(invoiceService.governmentDecision(id, request.getDecision(), authentication.getName()));
+    }
+
+    @PostMapping("/{id}/change-request")
+    public ResponseEntity<Invoice> requestInvoiceChange(@PathVariable UUID id, @RequestBody InvoiceChangeRequestDto request, Authentication authentication) {
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing authentication");
+        }
+        return ResponseEntity.ok(invoiceService.requestInvoiceChange(id, authentication.getName(), request == null ? null : request.getReason()));
+    }
+
+    @PatchMapping("/{id}/change-request/ngo/decision")
+    public ResponseEntity<Invoice> ngoChangeDecision(@PathVariable UUID id, @RequestBody DecisionRequest request, Authentication authentication) {
+        return ResponseEntity.ok(invoiceService.ngoChangeDecision(id, request.getDecision(), authentication.getName()));
+    }
+
+    @PatchMapping("/{id}/change-request/government/decision")
+    public ResponseEntity<Invoice> governmentChangeDecision(@PathVariable UUID id, @RequestBody DecisionRequest request, Authentication authentication) {
+        return ResponseEntity.ok(invoiceService.governmentChangeDecision(id, request.getDecision(), authentication.getName()));
+    }
+
+    @PostMapping(value = "/{id}/change-request/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Invoice> uploadChangedInvoice(
+            @PathVariable UUID id,
+            @RequestPart("file") MultipartFile file,
+            HttpServletRequest httpRequest
+    ) {
+        String token = extractBearerTokenOrQueryToken(httpRequest);
+        if (token == null || token.isBlank() || !jwtTokenValidator.validateToken(token)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid authorization token");
+        }
+        String vendorUserId = jwtTokenValidator.getUserIdFromToken(token);
+        if (vendorUserId == null || vendorUserId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authorization token");
+        }
+
+        try {
+            Invoice updated = invoiceService.uploadChangedInvoiceAndReplace(
+                    vendorUserId,
+                    id,
+                    file.getBytes(),
+                    file.getOriginalFilename(),
+                    file.getContentType()
+            );
+            return ResponseEntity.ok(updated);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid invoice file");
+        }
     }
 
     @PutMapping("/{id}")
