@@ -104,28 +104,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String resolveRoleFromDatabase(String userId, String email) {
         if (userId != null && !userId.isBlank()) {
-            if (governmentRepository.findByUserId(userId).isPresent())
+            if (governmentRepository != null && governmentRepository.findByUserId(userId).isPresent())
                 return "government";
-            if (ngoRepository.findByUserId(userId).isPresent())
+            if (ngoRepository != null && ngoRepository.findByUserId(userId).isPresent())
                 return "ngo";
-            if (vendorRepository.findByUserId(userId).isPresent())
+            if (vendorRepository != null && vendorRepository.findByUserId(userId).isPresent())
                 return "vendor";
-            if (auditorRepository.findByUserId(userId).isPresent())
+            if (auditorRepository != null && auditorRepository.findByUserId(userId).isPresent())
                 return "auditor";
-            if (donorRepository.findByUserId(userId).isPresent())
+            if (donorRepository != null && donorRepository.findByUserId(userId).isPresent())
                 return "donor";
         }
 
         if (email != null && !email.isBlank()) {
-            if (governmentRepository.findByEmail(email).isPresent())
+            if (governmentRepository != null && governmentRepository.findByEmail(email).isPresent())
                 return "government";
-            if (ngoRepository.findByEmail(email).isPresent())
+            if (ngoRepository != null && ngoRepository.findByEmail(email).isPresent())
                 return "ngo";
-            if (vendorRepository.findByEmail(email).isPresent())
+            if (vendorRepository != null && vendorRepository.findByEmail(email).isPresent())
                 return "vendor";
-            if (auditorRepository.findByEmail(email).isPresent())
+            if (auditorRepository != null && auditorRepository.findByEmail(email).isPresent())
                 return "auditor";
-            if (donorRepository.findByEmail(email).isPresent())
+            if (donorRepository != null && donorRepository.findByEmail(email).isPresent())
                 return "donor";
         }
 

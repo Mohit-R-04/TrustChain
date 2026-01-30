@@ -5,10 +5,12 @@ import com.trustchain.backend.model.BlockchainEvent;
 import com.trustchain.backend.model.DemoDonorContribution;
 import com.trustchain.backend.model.DemoEscrowState;
 import com.trustchain.backend.model.DemoSchemeBalance;
+import com.trustchain.backend.model.DemoWalletBalance;
 import com.trustchain.backend.repository.BlockchainEventRepository;
 import com.trustchain.backend.repository.DemoDonorContributionRepository;
 import com.trustchain.backend.repository.DemoEscrowStateRepository;
 import com.trustchain.backend.repository.DemoSchemeBalanceRepository;
+import com.trustchain.backend.repository.DemoWalletBalanceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,9 @@ public class DemoEscrowLedgerService {
 
     @Autowired
     private BlockchainEventRepository eventRepository;
+
+    @Autowired
+    private DemoWalletBalanceRepository walletBalanceRepository;
 
     public BigInteger getContractBalanceWei() {
         DemoEscrowState state = stateRepository.findById(STATE_KEY).orElse(null);
@@ -112,6 +117,76 @@ public class DemoEscrowLedgerService {
         e.setBlockNumber(0L);
         e.setSchemeId(schemeId.toString());
         e.setFromAddress(donorAddress);
+        e.setAmountWei(amountWei.toString());
+        eventRepository.save(e);
+        return txHash;
+    }
+
+    public String recordRelease(UUID schemeUuid, BigInteger schemeId, String toAddress, BigInteger amountWei, UUID invoiceId) {
+        if (amountWei.signum() <= 0) {
+            throw new IllegalArgumentException("amountWei must be > 0");
+        }
+        if (toAddress == null || toAddress.isBlank()) {
+            throw new IllegalArgumentException("toAddress is required");
+        }
+        String su = schemeUuid.toString();
+
+        DemoSchemeBalance schemeBal = schemeBalanceRepository.findById(su).orElse(null);
+        BigInteger sb = schemeBal == null || schemeBal.getBalanceWei() == null || schemeBal.getBalanceWei().isBlank()
+                ? BigInteger.ZERO
+                : new BigInteger(schemeBal.getBalanceWei());
+        if (sb.compareTo(amountWei) < 0) {
+            throw new IllegalStateException("Insufficient scheme escrow balance");
+        }
+
+        DemoEscrowState state = stateRepository.findById(STATE_KEY).orElse(null);
+        BigInteger contractBal = state == null || state.getContractBalanceWei() == null || state.getContractBalanceWei().isBlank()
+                ? BigInteger.ZERO
+                : new BigInteger(state.getContractBalanceWei());
+        if (contractBal.compareTo(amountWei) < 0) {
+            throw new IllegalStateException("Insufficient contract balance");
+        }
+
+        if (state == null) {
+            state = new DemoEscrowState();
+            state.setStateKey(STATE_KEY);
+        }
+        state.setContractBalanceWei(contractBal.subtract(amountWei).toString());
+        stateRepository.save(state);
+
+        if (schemeBal == null) {
+            schemeBal = new DemoSchemeBalance();
+            schemeBal.setSchemeUuid(su);
+            schemeBal.setSchemeId(schemeId.toString());
+        }
+        schemeBal.setBalanceWei(sb.subtract(amountWei).toString());
+        schemeBal.setSchemeId(schemeId.toString());
+        schemeBalanceRepository.save(schemeBal);
+
+        String normalizedTo = toAddress.trim().toLowerCase();
+        DemoWalletBalance walletBal = walletBalanceRepository.findById(normalizedTo).orElseGet(() -> {
+            DemoWalletBalance b = new DemoWalletBalance();
+            b.setAddress(normalizedTo);
+            b.setBalanceWei("0");
+            return b;
+        });
+        BigInteger wb = walletBal.getBalanceWei() == null || walletBal.getBalanceWei().isBlank()
+                ? BigInteger.ZERO
+                : new BigInteger(walletBal.getBalanceWei());
+        walletBal.setBalanceWei(wb.add(amountWei).toString());
+        walletBalanceRepository.save(walletBal);
+
+        String txHash = "demo-" + UUID.randomUUID();
+        BlockchainEvent e = new BlockchainEvent();
+        e.setEventName("FundsReleased");
+        e.setChainId(properties.getChainId());
+        e.setContractAddress(properties.getContractAddress());
+        e.setTransactionHash(txHash);
+        e.setBlockNumber(0L);
+        e.setSchemeId(schemeId.toString());
+        e.setInvoiceId(invoiceId != null ? invoiceId.toString() : null);
+        e.setFromAddress("demo-escrow");
+        e.setVendorAddress(normalizedTo);
         e.setAmountWei(amountWei.toString());
         eventRepository.save(e);
         return txHash;

@@ -10,9 +10,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "trustchain.invoice.cid.secret=test-secret")
 @AutoConfigureMockMvc
 class InvoiceUploadSecurityTest {
 
@@ -35,6 +36,6 @@ class InvoiceUploadSecurityTest {
                                 .param("amount", "1")
                 )
                 .andExpect(status().isUnauthorized())
-                .andExpect(status().reason("Missing or invalid authorization token"));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Missing or invalid authorization token")));
     }
 }

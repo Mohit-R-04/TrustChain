@@ -24,6 +24,9 @@ public class Ngo {
     @Column(name = "phone_number")
     private String phoneNumber;
 
+    @Column(name = "wallet_address")
+    private String walletAddress;
+
     // Constructors
     public Ngo() {
     }
@@ -67,5 +70,13 @@ public class Ngo {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public String getWalletAddress() {
+        return walletAddress;
+    }
+
+    public void setWalletAddress(String walletAddress) {
+        this.walletAddress = walletAddress;
     }
 }

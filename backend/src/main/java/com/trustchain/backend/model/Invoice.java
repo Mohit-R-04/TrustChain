@@ -24,6 +24,18 @@ public class Invoice {
     @Column(name = "invoice_ipfs_hash")
     private String invoiceIpfsHash;
 
+    @Column(name = "change_request_status")
+    private String changeRequestStatus;
+
+    @Column(name = "change_request_reason")
+    private String changeRequestReason;
+
+    @Column(name = "change_requested_at")
+    private LocalDateTime changeRequestedAt;
+
+    @Column(name = "change_completed_at")
+    private LocalDateTime changeCompletedAt;
+
     @Column(name = "amount")
     private Double amount;
 
@@ -77,6 +89,38 @@ public class Invoice {
 
     public void setInvoiceIpfsHash(String invoiceIpfsHash) {
         this.invoiceIpfsHash = invoiceIpfsHash;
+    }
+
+    public String getChangeRequestStatus() {
+        return changeRequestStatus;
+    }
+
+    public void setChangeRequestStatus(String changeRequestStatus) {
+        this.changeRequestStatus = changeRequestStatus;
+    }
+
+    public String getChangeRequestReason() {
+        return changeRequestReason;
+    }
+
+    public void setChangeRequestReason(String changeRequestReason) {
+        this.changeRequestReason = changeRequestReason;
+    }
+
+    public LocalDateTime getChangeRequestedAt() {
+        return changeRequestedAt;
+    }
+
+    public void setChangeRequestedAt(LocalDateTime changeRequestedAt) {
+        this.changeRequestedAt = changeRequestedAt;
+    }
+
+    public LocalDateTime getChangeCompletedAt() {
+        return changeCompletedAt;
+    }
+
+    public void setChangeCompletedAt(LocalDateTime changeCompletedAt) {
+        this.changeCompletedAt = changeCompletedAt;
     }
 
     public Double getAmount() {

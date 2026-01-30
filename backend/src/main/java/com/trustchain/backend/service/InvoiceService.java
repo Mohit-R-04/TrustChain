@@ -13,10 +13,12 @@ import com.trustchain.backend.repository.ManageRepository;
 import com.trustchain.backend.repository.NgoVendorRepository;
 import com.trustchain.backend.repository.PanRecordRepository;
 import com.trustchain.backend.repository.VendorRepository;
+import com.trustchain.backend.security.InvoiceCidCrypto;
 import com.trustchain.backend.service.blockchain.InvoiceBlockchainService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -54,16 +56,22 @@ public class InvoiceService {
     @Autowired
     private InvoiceBlockchainService invoiceBlockchainService;
 
+    @Autowired
+    private InvoicePayoutService invoicePayoutService;
+
+    @Autowired
+    private InvoiceCidCrypto invoiceCidCrypto;
+
     public List<Invoice> getAllInvoices() {
-        return invoiceRepository.findAll();
+        return invoiceRepository.findAll().stream().map(this::toView).toList();
     }
 
     public List<Invoice> getInvoicesByVendorUserId(String userId) {
-        return invoiceRepository.findByVendor_UserId(userId);
+        return invoiceRepository.findByVendor_UserId(userId).stream().map(this::toView).toList();
     }
 
     public List<Invoice> getInvoicesByNgoUserId(String userId) {
-        return invoiceRepository.findByManage_Ngo_UserId(userId);
+        return invoiceRepository.findByManage_Ngo_UserId(userId).stream().map(this::toView).toList();
     }
 
     public List<Invoice> getInvoicesByGovernmentUserId(String userId) {
@@ -75,26 +83,30 @@ public class InvoiceService {
                 .map(g -> {
                     List<Invoice> byGovtId = invoiceRepository.findByManage_Scheme_Government_GovtId(g.getGovtId());
                     if (!byGovtId.isEmpty()) {
-                        return byGovtId;
+                        return byGovtId.stream().map(this::toView).toList();
                     }
                     List<Invoice> byUserId = invoiceRepository.findByManage_Scheme_Government_UserId(userId);
                     if (!byUserId.isEmpty()) {
-                        return byUserId;
+                        return byUserId.stream().map(this::toView).toList();
                     }
-                    return invoiceRepository.findAll();
+                    return invoiceRepository.findAll().stream().map(this::toView).toList();
                 })
                 .orElseGet(() -> {
                     List<Invoice> byUserId = invoiceRepository.findByManage_Scheme_Government_UserId(userId);
-                    return byUserId.isEmpty() ? invoiceRepository.findAll() : byUserId;
+                    List<Invoice> selected = byUserId.isEmpty() ? invoiceRepository.findAll() : byUserId;
+                    return selected.stream().map(this::toView).toList();
                 });
     }
 
     public Optional<Invoice> getInvoiceById(UUID id) {
-        return invoiceRepository.findById(id);
+        return invoiceRepository.findById(id).map(this::toView);
     }
 
     public Invoice createInvoice(Invoice invoice) {
-        return invoiceRepository.save(invoice);
+        if (invoice != null && invoice.getInvoiceIpfsHash() != null && !invoice.getInvoiceIpfsHash().isBlank()) {
+            invoice.setInvoiceIpfsHash(invoiceCidCrypto.hash(invoice.getInvoiceIpfsHash()));
+        }
+        return toView(invoiceRepository.save(invoice));
     }
 
     public Invoice uploadInvoiceAndCreate(String vendorUserId, UUID manageId, Double amount, byte[] fileBytes, String filename, String contentType) {
@@ -125,6 +137,7 @@ public class InvoiceService {
         }
 
         String cid = ipfsService.uploadInvoice(fileBytes, filename, contentType);
+        String storedCid = invoiceCidCrypto.hash(cid);
 
         Invoice invoice = new Invoice();
         UUID invoiceId = UUID.randomUUID();
@@ -132,13 +145,16 @@ public class InvoiceService {
         invoice.setVendor(vendor);
         invoice.setManage(manage);
         invoice.setAmount(amount);
-        invoice.setInvoiceIpfsHash(cid);
+        invoice.setInvoiceIpfsHash(storedCid);
         invoice.setStatus("PENDING");
         invoice.setCreatedAt(LocalDateTime.now());
 
         invoiceBlockchainService.storeInvoiceCid(invoiceId, cid);
 
-        return invoiceRepository.save(invoice);
+        Invoice saved = invoiceRepository.save(invoice);
+        Invoice view = toView(saved);
+        view.setInvoiceIpfsHash(cid);
+        return view;
     }
 
     public Invoice ngoDecision(UUID invoiceId, String decision, String ngoUserId) {
@@ -163,9 +179,51 @@ public class InvoiceService {
             invoice.setStatus("REJECTED");
         }
 
-        return invoiceRepository.save(invoice);
+        return toView(invoiceRepository.save(invoice));
     }
 
+    public Invoice requestInvoiceChange(UUID invoiceId, String vendorUserId, String reason) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found"));
+
+        if (invoice.getVendor() == null || invoice.getVendor().getUserId() == null || !invoice.getVendor().getUserId().equals(vendorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to request change for this invoice");
+        }
+
+        invoice.setChangeRequestStatus("REQUESTED");
+        invoice.setChangeRequestReason(reason == null ? null : reason.trim());
+        invoice.setChangeRequestedAt(LocalDateTime.now());
+        invoice.setChangeCompletedAt(null);
+
+        return toView(invoiceRepository.save(invoice));
+    }
+
+    public Invoice ngoChangeDecision(UUID invoiceId, String decision, String ngoUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found"));
+
+        if (invoice.getManage() == null || invoice.getManage().getNgo() == null || invoice.getManage().getNgo().getUserId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invoice project NGO not set");
+        }
+        if (!invoice.getManage().getNgo().getUserId().equals(ngoUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to approve change for this invoice");
+        }
+
+        if (invoice.getChangeRequestStatus() == null || !invoice.getChangeRequestStatus().equalsIgnoreCase("REQUESTED")) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Invoice change request is not pending NGO approval");
+        }
+
+        String normalized = normalizeDecision(decision);
+        if (normalized.equals("ACCEPTED")) {
+            invoice.setChangeRequestStatus("NGO_APPROVED");
+        } else {
+            invoice.setChangeRequestStatus("REJECTED");
+        }
+
+        return toView(invoiceRepository.save(invoice));
+    }
+
+    @Transactional
     public Invoice governmentDecision(UUID invoiceId, String decision, String governmentUserId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found"));
@@ -186,17 +244,71 @@ public class InvoiceService {
         String normalized = normalizeDecision(decision);
         if (normalized.equals("ACCEPTED")) {
             invoice.setStatus("ACCEPTED");
+            invoicePayoutService.payoutToNgoAfterGovernmentAcceptance(invoice);
         } else {
             invoice.setStatus("REJECTED");
         }
 
-        return invoiceRepository.save(invoice);
+        return toView(invoiceRepository.save(invoice));
+    }
+
+    @Transactional
+    public Invoice governmentChangeDecision(UUID invoiceId, String decision, String governmentUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found"));
+
+        if (invoice.getManage() == null || invoice.getManage().getScheme() == null
+                || invoice.getManage().getScheme().getGovernment() == null
+                || invoice.getManage().getScheme().getGovernment().getUserId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invoice scheme government not set");
+        }
+        if (!invoice.getManage().getScheme().getGovernment().getUserId().equals(governmentUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to approve change for this invoice");
+        }
+
+        if (invoice.getChangeRequestStatus() == null || !invoice.getChangeRequestStatus().equalsIgnoreCase("NGO_APPROVED")) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Invoice change request is not pending government approval");
+        }
+
+        String normalized = normalizeDecision(decision);
+        if (normalized.equals("ACCEPTED")) {
+            invoice.setChangeRequestStatus("GOVERNMENT_APPROVED");
+        } else {
+            invoice.setChangeRequestStatus("REJECTED");
+        }
+
+        return toView(invoiceRepository.save(invoice));
+    }
+
+    public Invoice uploadChangedInvoiceAndReplace(String vendorUserId, UUID invoiceId, byte[] fileBytes, String filename, String contentType) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invoice not found"));
+
+        if (invoice.getVendor() == null || invoice.getVendor().getUserId() == null || !invoice.getVendor().getUserId().equals(vendorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to update this invoice");
+        }
+        if (invoice.getChangeRequestStatus() == null || !invoice.getChangeRequestStatus().equalsIgnoreCase("GOVERNMENT_APPROVED")) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Invoice change request is not approved");
+        }
+
+        String cid = ipfsService.uploadInvoice(fileBytes, filename, contentType);
+        String storedCid = invoiceCidCrypto.hash(cid);
+        invoice.setInvoiceIpfsHash(storedCid);
+        invoice.setChangeRequestStatus("COMPLETED");
+        invoice.setChangeCompletedAt(LocalDateTime.now());
+
+        invoiceBlockchainService.storeInvoiceCid(invoiceId, cid);
+
+        return toView(invoiceRepository.save(invoice));
     }
 
     public Invoice updateInvoice(UUID id, Invoice invoice) {
         if (invoiceRepository.existsById(id)) {
             invoice.setInvoiceId(id);
-            return invoiceRepository.save(invoice);
+            if (invoice != null && invoice.getInvoiceIpfsHash() != null && !invoice.getInvoiceIpfsHash().isBlank()) {
+                invoice.setInvoiceIpfsHash(invoiceCidCrypto.hash(invoice.getInvoiceIpfsHash()));
+            }
+            return toView(invoiceRepository.save(invoice));
         }
         return null;
     }
@@ -214,5 +326,24 @@ public class InvoiceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "decision must be ACCEPTED or REJECTED");
         }
         return normalized;
+    }
+
+    private Invoice toView(Invoice invoice) {
+        if (invoice == null) {
+            return null;
+        }
+        Invoice view = new Invoice();
+        view.setInvoiceId(invoice.getInvoiceId());
+        view.setVendor(invoice.getVendor());
+        view.setManage(invoice.getManage());
+        view.setInvoiceIpfsHash(invoiceCidCrypto.unhash(invoice.getInvoiceIpfsHash()));
+        view.setChangeRequestStatus(invoice.getChangeRequestStatus());
+        view.setChangeRequestReason(invoice.getChangeRequestReason());
+        view.setChangeRequestedAt(invoice.getChangeRequestedAt());
+        view.setChangeCompletedAt(invoice.getChangeCompletedAt());
+        view.setAmount(invoice.getAmount());
+        view.setStatus(invoice.getStatus());
+        view.setCreatedAt(invoice.getCreatedAt());
+        return view;
     }
 }

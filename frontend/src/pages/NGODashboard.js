@@ -406,6 +406,30 @@ const NGODashboard = () => {
         }
     };
 
+    const ngoInvoiceChangeDecision = async (invoiceId, decision) => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/invoice/${invoiceId}/change-request/ngo/decision`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ decision })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setInvoices(prev => prev.map(i => i.invoiceId === updated.invoiceId ? updated : i));
+            } else {
+                const errText = await res.text();
+                alert(errText || 'Failed to update invoice change request');
+            }
+        } catch (e) {
+            console.error('Error updating invoice change request:', e);
+            alert('Error updating invoice change request');
+        }
+    };
+
     return (
         <div className="dashboard-container">
             <DashboardHeader title="NGO Dashboard" role="ngo" />
@@ -878,6 +902,7 @@ const NGODashboard = () => {
                                             <th>Vendor</th>
                                             <th>Amount</th>
                                             <th>Status</th>
+                                            <th>Change</th>
                                             <th>IPFS</th>
                                             <th>Actions</th>
                                         </tr>
@@ -886,6 +911,7 @@ const NGODashboard = () => {
                                         {invoices.map(inv => {
                                             const status = (inv.status || '').toUpperCase();
                                             const statusClass = status === 'ACCEPTED' ? 'accepted' : status === 'REJECTED' ? 'rejected' : status === 'NGO_ACCEPTED' ? 'accepted' : 'pending';
+                                            const changeStatus = (inv.changeRequestStatus || '').toUpperCase();
                                             const gatewayBaseRaw = process.env.REACT_APP_IPFS_GATEWAY_BASE || 'https://gateway.pinata.cloud/ipfs/';
                                             const gatewayBase = gatewayBaseRaw.endsWith('/') ? gatewayBaseRaw : `${gatewayBaseRaw}/`;
                                             const ipfsUrl = inv.invoiceIpfsHash ? `${gatewayBase}${inv.invoiceIpfsHash}` : null;
@@ -898,15 +924,33 @@ const NGODashboard = () => {
                                                         <span className={`status-badge ${statusClass}`}>{status || 'PENDING'}</span>
                                                     </td>
                                                     <td>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <span className="status-text">{changeStatus || 'NONE'}</span>
+                                                            {inv.changeRequestReason ? (
+                                                                <span className="status-text" title={inv.changeRequestReason}>
+                                                                    {inv.changeRequestReason.length > 40 ? `${inv.changeRequestReason.substring(0, 40)}...` : inv.changeRequestReason}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    </td>
+                                                    <td>
                                                         {ipfsUrl ? <a href={ipfsUrl} target="_blank" rel="noreferrer">View</a> : '-'}
                                                     </td>
                                                     <td>
-                                                        {status === 'PENDING' && (
-                                                            <div className="action-buttons-small">
-                                                                <button className="btn-accept" onClick={() => ngoInvoiceDecision(inv.invoiceId, 'ACCEPTED')}>Accept</button>
-                                                                <button className="btn-reject" onClick={() => ngoInvoiceDecision(inv.invoiceId, 'REJECTED')}>Reject</button>
-                                                            </div>
-                                                        )}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            {status === 'PENDING' && (
+                                                                <div className="action-buttons-small">
+                                                                    <button className="btn-accept" onClick={() => ngoInvoiceDecision(inv.invoiceId, 'ACCEPTED')}>Accept</button>
+                                                                    <button className="btn-reject" onClick={() => ngoInvoiceDecision(inv.invoiceId, 'REJECTED')}>Reject</button>
+                                                                </div>
+                                                            )}
+                                                            {changeStatus === 'REQUESTED' && (
+                                                                <div className="action-buttons-small">
+                                                                    <button className="btn-accept" onClick={() => ngoInvoiceChangeDecision(inv.invoiceId, 'ACCEPTED')}>Approve Change</button>
+                                                                    <button className="btn-reject" onClick={() => ngoInvoiceChangeDecision(inv.invoiceId, 'REJECTED')}>Reject Change</button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );

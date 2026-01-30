@@ -26,16 +26,14 @@ const GovernmentDashboard = () => {
     const [communityNeeds, setCommunityNeeds] = useState([]);
     const [communityNeedsLoading, setCommunityNeedsLoading] = useState(false);
     const [communityNeedsError, setCommunityNeedsError] = useState(null);
-    const [implementingNeedId, setImplementingNeedId] = useState(null);
-
+    
     const [stats, setStats] = useState({
         totalSchemes: 0,
         fundsAllocated: 0,
         pendingReviews: 0
     });
-
+    
     const [transactions, setTransactions] = useState([]);
-    const [donations, setDonations] = useState([]);
     const [schemes, setSchemes] = useState([]);
     const [invoices, setInvoices] = useState([]);
     const [invoicesError, setInvoicesError] = useState(null);
@@ -55,14 +53,14 @@ const GovernmentDashboard = () => {
         try {
             const token = await getToken();
             const headers = { 'Authorization': `Bearer ${token}` };
-
+            
             // Fetch Schemes
             const schemesRes = await fetch(`${API_URL}/api/scheme`);
             if (schemesRes.ok) {
                 const data = await schemesRes.json();
                 setSchemes(data);
-                setStats(prev => ({
-                    ...prev,
+                setStats(prev => ({ 
+                    ...prev, 
                     totalSchemes: data.length,
                     fundsAllocated: data.reduce((sum, s) => sum + (s.budget || 0), 0)
                 }));
@@ -73,12 +71,6 @@ const GovernmentDashboard = () => {
             if (txRes.ok) {
                 const data = await txRes.json();
                 setTransactions(data);
-            }
-
-            const donationRes = await fetch(`${API_URL}/api/donation`, { headers });
-            if (donationRes.ok) {
-                const data = await donationRes.json();
-                setDonations(Array.isArray(data) ? data : []);
             }
 
         } catch (error) {
@@ -151,49 +143,6 @@ const GovernmentDashboard = () => {
         }
     };
 
-    const implementNeed = async (need) => {
-        if (!need?.needId) return;
-        const ok = window.confirm('Implement this community need as an official project?');
-        if (!ok) return;
-
-        setImplementingNeedId(need.needId);
-        try {
-            const token = await getToken();
-            const res = await fetch(`${API_URL}/api/government/community-needs/${need.needId}/implement`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) {
-                const contentType = res.headers.get('content-type') || '';
-                let msg = 'Failed to implement community need';
-                if (contentType.includes('application/json')) {
-                    const body = await res.json().catch(() => null);
-                    msg = body?.error || body?.message || msg;
-                } else {
-                    const text = await res.text().catch(() => '');
-                    if (text) msg = text;
-                }
-                setCommunityNeedsError(msg);
-                return;
-            }
-            const scheme = await res.json().catch(() => null);
-            if (!scheme?.schemeId) {
-                setCommunityNeedsError('Implemented, but no project was returned by the server');
-                return;
-            }
-            await fetchDashboardData();
-            await fetchCommunityNeeds();
-            setShowCommunityNeedsModal(false);
-            setShowApproveModal(true);
-            setSelectedSchemeId(scheme.schemeId);
-            setShowSchemeDetailsModal(true);
-        } catch {
-            setCommunityNeedsError('Failed to implement community need');
-        } finally {
-            setImplementingNeedId(null);
-        }
-    };
-
     const fetchInvoices = async () => {
         try {
             const token = await getToken();
@@ -238,6 +187,30 @@ const GovernmentDashboard = () => {
         }
     };
 
+    const governmentInvoiceChangeDecision = async (invoiceId, decision) => {
+        try {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/api/invoice/${invoiceId}/change-request/government/decision`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ decision })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setInvoices(prev => prev.map(i => i.invoiceId === updated.invoiceId ? updated : i));
+            } else {
+                const errText = await res.text();
+                alert(errText || 'Failed to update invoice change request');
+            }
+        } catch (e) {
+            console.error('Error updating invoice change request:', e);
+            alert('Error updating invoice change request');
+        }
+    };
+
     return (
         <div className="dashboard-container">
             <DashboardHeader title="Government Dashboard" role="government" />
@@ -272,7 +245,7 @@ const GovernmentDashboard = () => {
                 <div className="action-section">
                     <h2>Quick Actions</h2>
                     <div className="action-buttons">
-                        <button
+                        <button 
                             className="action-btn primary"
                             onClick={() => setShowCreateForm(true)}
                         >
@@ -284,7 +257,7 @@ const GovernmentDashboard = () => {
                         >
                             Donate to a Scheme
                         </button>
-                        <button
+                        <button 
                             className="action-btn secondary"
                             onClick={() => {
                                 fetchDashboardData();
@@ -293,7 +266,7 @@ const GovernmentDashboard = () => {
                         >
                             Monitor Funds
                         </button>
-                        <button
+                        <button 
                             className="action-btn secondary"
                             onClick={() => {
                                 fetchDashboardData();
@@ -334,7 +307,7 @@ const GovernmentDashboard = () => {
 
             {/* Create Scheme Modal */}
             {showCreateForm && (
-                <CreateSchemeForm
+                <CreateSchemeForm 
                     onClose={() => setShowCreateForm(false)}
                     onSuccess={(data) => {
                         console.log('Scheme created:', data);
@@ -353,73 +326,34 @@ const GovernmentDashboard = () => {
                             <button className="close-btn" onClick={() => setShowMonitorModal(false)}>×</button>
                         </div>
                         <div className="table-container">
-                            {donations.length === 0 && transactions.length === 0 ? (
-                                <p className="empty-state">No records found.</p>
-                            ) : null}
-
-                            {donations.length > 0 ? (
-                                <>
-                                    <h4 style={{ margin: '12px 0', color: '#e2e8f0' }}>Donations</h4>
-                                    <table className="data-table">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Project</th>
-                                                <th>Amount</th>
-                                                <th>Ref</th>
-                                                <th>Status</th>
-                                                <th>Date</th>
+                            {transactions.length === 0 ? (
+                                <p className="empty-state">No transactions found.</p>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {transactions.map(tx => (
+                                            <tr key={tx.transactionId}>
+                                                <td className="monospace">{tx.transactionId.substring(0, 8)}...</td>
+                                                <td>₹{tx.amount}</td>
+                                                <td>
+                                                    <span className={`status-badge ${tx.status.toLowerCase()}`}>
+                                                        {tx.status}
+                                                    </span>
+                                                </td>
+                                                <td>{new Date(tx.timestamp).toLocaleDateString()}</td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {donations.map(d => (
-                                                <tr key={d.donationId}>
-                                                    <td className="monospace">{String(d.donationId).substring(0, 8)}...</td>
-                                                    <td>{d.scheme?.schemeName || 'Unknown'}</td>
-                                                    <td>₹{d.amount}</td>
-                                                    <td className="monospace">{d.transactionRef}</td>
-                                                    <td>
-                                                        <span className={`status-badge ${(d.status || 'completed').toLowerCase()}`}>
-                                                            {d.status || 'COMPLETED'}
-                                                        </span>
-                                                    </td>
-                                                    <td>{d.timestamp ? new Date(d.timestamp).toLocaleDateString() : ''}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </>
-                            ) : null}
-
-                            {transactions.length > 0 ? (
-                                <>
-                                    <h4 style={{ margin: '16px 0 12px', color: '#e2e8f0' }}>Vendor Escrow Transactions</h4>
-                                    <table className="data-table">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Amount</th>
-                                                <th>Status</th>
-                                                <th>Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {transactions.map(tx => (
-                                                <tr key={tx.transactionId}>
-                                                    <td className="monospace">{tx.transactionId.substring(0, 8)}...</td>
-                                                    <td>₹{tx.totalAmount}</td>
-                                                    <td>
-                                                        <span className={`status-badge ${tx.status.toLowerCase()}`}>
-                                                            {tx.status}
-                                                        </span>
-                                                    </td>
-                                                    <td>{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString() : ''}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </>
-                            ) : null}
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -444,6 +378,7 @@ const GovernmentDashboard = () => {
                                             <th>Vendor</th>
                                             <th>Amount</th>
                                             <th>Status</th>
+                                            <th>Change</th>
                                             <th>IPFS</th>
                                             <th>Actions</th>
                                         </tr>
@@ -452,6 +387,7 @@ const GovernmentDashboard = () => {
                                         {invoices.map(inv => {
                                             const status = (inv.status || '').toUpperCase();
                                             const statusClass = status === 'ACCEPTED' ? 'accepted' : status === 'REJECTED' ? 'rejected' : status === 'NGO_ACCEPTED' ? 'pending' : 'pending';
+                                            const changeStatus = (inv.changeRequestStatus || '').toUpperCase();
                                             const gatewayBaseRaw = process.env.REACT_APP_IPFS_GATEWAY_BASE || 'https://gateway.pinata.cloud/ipfs/';
                                             const gatewayBase = gatewayBaseRaw.endsWith('/') ? gatewayBaseRaw : `${gatewayBaseRaw}/`;
                                             const ipfsUrl = inv.invoiceIpfsHash ? `${gatewayBase}${inv.invoiceIpfsHash}` : null;
@@ -465,15 +401,36 @@ const GovernmentDashboard = () => {
                                                         <span className={`status-badge ${statusClass}`}>{status || 'PENDING'}</span>
                                                     </td>
                                                     <td>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <span className="status-text">{changeStatus || 'NONE'}</span>
+                                                            {inv.changeRequestReason ? (
+                                                                <span className="status-text" title={inv.changeRequestReason}>
+                                                                    {inv.changeRequestReason.length > 40 ? `${inv.changeRequestReason.substring(0, 40)}...` : inv.changeRequestReason}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    </td>
+                                                    <td>
                                                         {ipfsUrl ? <a href={ipfsUrl} target="_blank" rel="noreferrer">View</a> : '-'}
                                                     </td>
                                                     <td>
-                                                        {status === 'NGO_ACCEPTED' && (
-                                                            <div className="action-buttons-small">
-                                                                <button className="btn-accept" onClick={() => governmentInvoiceDecision(inv.invoiceId, 'ACCEPTED')}>Accept</button>
-                                                                <button className="btn-reject" onClick={() => governmentInvoiceDecision(inv.invoiceId, 'REJECTED')}>Reject</button>
-                                                            </div>
-                                                        )}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                            {status === 'PENDING' && (
+                                                                <span className="status-text">Waiting for NGO</span>
+                                                            )}
+                                                            {status === 'NGO_ACCEPTED' && (
+                                                                <div className="action-buttons-small">
+                                                                    <button className="btn-accept" onClick={() => governmentInvoiceDecision(inv.invoiceId, 'ACCEPTED')}>Accept</button>
+                                                                    <button className="btn-reject" onClick={() => governmentInvoiceDecision(inv.invoiceId, 'REJECTED')}>Reject</button>
+                                                                </div>
+                                                            )}
+                                                            {changeStatus === 'NGO_APPROVED' && (
+                                                                <div className="action-buttons-small">
+                                                                    <button className="btn-accept" onClick={() => governmentInvoiceChangeDecision(inv.invoiceId, 'ACCEPTED')}>Approve Change</button>
+                                                                    <button className="btn-reject" onClick={() => governmentInvoiceChangeDecision(inv.invoiceId, 'REJECTED')}>Reject Change</button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -645,13 +602,6 @@ const GovernmentDashboard = () => {
                                                         </button>
                                                         <button className="action-btn small" onClick={() => voteOnNeed(n.needId, -1)}>
                                                             Downvote
-                                                        </button>
-                                                        <button
-                                                            className="action-btn small primary"
-                                                            onClick={() => implementNeed(n)}
-                                                            disabled={Boolean(n.implementedSchemeId) || implementingNeedId === n.needId}
-                                                        >
-                                                            Implement
                                                         </button>
                                                     </span>
                                                 </td>
