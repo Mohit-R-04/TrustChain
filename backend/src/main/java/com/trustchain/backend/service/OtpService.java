@@ -38,6 +38,9 @@ public class OtpService {
     @Value("${otp.delivery.fallback-to-log:false}")
     private boolean fallbackToLog;
 
+    @Value("${otp.demo-mode:true}")
+    private boolean otpDemoMode;
+
     @Value("${otp.validity.seconds:300}")
     private long otpValiditySeconds;
 
@@ -65,7 +68,7 @@ public class OtpService {
             }
         });
 
-        String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
+        String otp = otpDemoMode ? "123456" : String.format("%06d", secureRandom.nextInt(1_000_000));
         OtpToken token = new OtpToken();
         token.setEmail(email);
         token.setOtpHash(passwordEncoder.encode(otp));
@@ -73,6 +76,16 @@ public class OtpService {
         token.setExpiresAt(now.plusSeconds(otpValiditySeconds));
         token.setAttemptCount(0);
         otpTokenRepository.save(token);
+
+        if (otpDemoMode) {
+            log.info("OTP Demo Mode active. OTP for {} is 123456", email);
+            try {
+                emailService.sendOtpEmail(email, "123456");
+            } catch (Exception ex) {
+                log.warn("Failed to send demo OTP email (SMTP likely blocked): {}", ex.getMessage());
+            }
+            return;
+        }
 
         if ("log".equalsIgnoreCase(deliveryMode)) {
             log.info("OTP for {} is {}", email, otp);
