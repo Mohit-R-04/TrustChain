@@ -15,13 +15,19 @@ public class EmailService {
     private JavaMailSender mailSender;
 
     @Value("${spring.mail.username}")
+    private String smtpUsername;
+
+    @Value("${mail.from:${spring.mail.username}}")
     private String fromEmail;
+
+    @Value("${mail.from.name:TrustChain}")
+    private String fromName;
 
     @Value("${otp.validity.seconds:300}")
     private long otpValiditySeconds;
 
     public void sendOtpEmail(String toEmail, String otp) {
-        if (fromEmail == null || fromEmail.isBlank()) {
+        if (smtpUsername == null || smtpUsername.isBlank()) {
             throw new IllegalStateException("Email sender is not configured. Set MAIL_USERNAME and MAIL_PASSWORD in environment.");
         }
         if (toEmail == null || toEmail.isBlank()) {
@@ -32,9 +38,12 @@ public class EmailService {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-            helper.setFrom(fromEmail);
+            // Use verified sender address (MAIL_FROM), with display name
+            jakarta.mail.internet.InternetAddress senderAddress =
+                new jakarta.mail.internet.InternetAddress(fromEmail, fromName, "UTF-8");
+            helper.setFrom(senderAddress);
             helper.setTo(toEmail);
-            helper.setSubject("TrustChain Verification OTP");
+            helper.setSubject("\uD83D\uDD10 TrustChain — Your Verification Code");
 
             String htmlContent = getOtpHtmlTemplate(otp, formatDuration(otpValiditySeconds));
             helper.setText(htmlContent, true); // true indicates HTML content
@@ -42,6 +51,8 @@ public class EmailService {
             mailSender.send(mimeMessage);
         } catch (MessagingException e) {
             throw new RuntimeException("Failed to send HTML OTP email", e);
+        } catch (java.io.UnsupportedEncodingException e) {
+            throw new RuntimeException("Failed to encode sender name", e);
         }
     }
 
