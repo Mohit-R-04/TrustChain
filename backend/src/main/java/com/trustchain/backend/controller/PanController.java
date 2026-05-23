@@ -16,7 +16,6 @@ import java.util.List;
 @RequestMapping("/api/pan")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class PanController {
 
     private final PanService panService;

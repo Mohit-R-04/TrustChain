@@ -2,6 +2,7 @@ package com.trustchain.backend.config;
 
 import com.trustchain.backend.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -19,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -27,6 +29,9 @@ public class SecurityConfig {
 
         @Autowired
         private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+        @Value("${app.cors.allowed-origin-patterns:http://localhost:3000,http://localhost:80,http://frontend:3000}")
+        private String allowedOriginPatterns;
 
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -128,12 +133,12 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
+                List<String> originPatterns = Arrays.stream(allowedOriginPatterns.split(","))
+                                .map(String::trim)
+                                .filter(origin -> !origin.isEmpty())
+                                .collect(Collectors.toList());
 
-                // Allow frontend origins (both local and Docker)
-                configuration.setAllowedOrigins(Arrays.asList(
-                                "http://localhost:3000",
-                                "http://localhost:80",
-                                "http://frontend:3000"));
+                configuration.setAllowedOriginPatterns(originPatterns);
 
                 // Allow all HTTP methods
                 configuration.setAllowedMethods(Arrays.asList(

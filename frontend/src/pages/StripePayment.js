@@ -109,7 +109,7 @@ const StripePayment = () => {
 
     const connectWallet = async () => {
         if (!window.ethereum) {
-            throw new Error('MetaMask is not available. Open http://localhost:3000 in Chrome/Brave with MetaMask installed (IDE preview browsers do not support extensions).');
+            throw new Error(`MetaMask is not available. Open ${window.location.origin} in Chrome/Brave with MetaMask installed (IDE preview browsers do not support extensions).`);
         }
         await ensurePolygonAmoyNetwork();
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -182,7 +182,7 @@ const StripePayment = () => {
                     if (window.ethereum) {
                         donorAddress = (walletAddress || (await connectWallet())) || donorAddress;
                     } else if (!blockchainDemoMode) {
-                        throw new Error('Blockchain is enabled, but MetaMask is not available. Open http://localhost:3000 in Chrome/Brave with MetaMask installed (IDE preview browsers do not support extensions).');
+                        throw new Error(`Blockchain is enabled, but MetaMask is not available. Open ${window.location.origin} in Chrome/Brave with MetaMask installed (IDE preview browsers do not support extensions).`);
                     }
 
                     let txHashToStore = '';

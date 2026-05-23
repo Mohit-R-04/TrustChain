@@ -24,5 +24,8 @@ WORKDIR /app
 # Copy the built JAR from Maven target directory
 COPY --from=build /app/target/*.jar app.jar
 
+# Keep the JVM within low-memory free-tier limits.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC"
+
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","app.jar"]

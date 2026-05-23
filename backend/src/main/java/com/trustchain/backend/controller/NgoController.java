@@ -17,7 +17,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/ngo")
-@CrossOrigin(origins = "*")
 public class NgoController {
 
     @Autowired

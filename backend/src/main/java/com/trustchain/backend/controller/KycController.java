@@ -16,7 +16,6 @@ import java.util.List;
 @RequestMapping("/api/kyc")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "*")
 public class KycController {
 
     private final KycService kycService;

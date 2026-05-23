@@ -14,7 +14,6 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/otp")
-@CrossOrigin(origins = "http://localhost:3000")
 public class OtpController {
 
     private static final Logger log = LoggerFactory.getLogger(OtpController.class);

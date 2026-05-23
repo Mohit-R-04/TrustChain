@@ -16,7 +16,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/scheme")
-@CrossOrigin(origins = "*")
 public class SchemeController {
 
     @Autowired
