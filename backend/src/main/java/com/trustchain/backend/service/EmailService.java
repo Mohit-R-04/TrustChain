@@ -1,23 +1,32 @@
 package com.trustchain.backend.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
+
     @Autowired
-    private JavaMailSender mailSender;
+    private ObjectMapper objectMapper;
 
-    @Value("${spring.mail.username}")
-    private String smtpUsername;
+    @Value("${brevo.api.key}")
+    private String brevoApiKey;
 
-    @Value("${mail.from:${spring.mail.username}}")
+    @Value("${mail.from:trustchain.otp.noreply@gmail.com}")
     private String fromEmail;
 
     @Value("${mail.from.name:TrustChain}")
@@ -26,33 +35,52 @@ public class EmailService {
     @Value("${otp.validity.seconds:300}")
     private long otpValiditySeconds;
 
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
+
     public void sendOtpEmail(String toEmail, String otp) {
-        if (smtpUsername == null || smtpUsername.isBlank()) {
-            throw new IllegalStateException("Email sender is not configured. Set MAIL_USERNAME and MAIL_PASSWORD in environment.");
+        if (brevoApiKey == null || brevoApiKey.isBlank()) {
+            throw new IllegalStateException("Brevo API key is not configured. Set BREVO_API_KEY in environment.");
         }
         if (toEmail == null || toEmail.isBlank()) {
             throw new IllegalArgumentException("Recipient email is required");
         }
 
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            // Use verified sender address (MAIL_FROM), with display name
-            jakarta.mail.internet.InternetAddress senderAddress =
-                new jakarta.mail.internet.InternetAddress(fromEmail, fromName, "UTF-8");
-            helper.setFrom(senderAddress);
-            helper.setTo(toEmail);
-            helper.setSubject("\uD83D\uDD10 TrustChain — Your Verification Code");
-
             String htmlContent = getOtpHtmlTemplate(otp, formatDuration(otpValiditySeconds));
-            helper.setText(htmlContent, true); // true indicates HTML content
 
-            mailSender.send(mimeMessage);
-        } catch (MessagingException e) {
-            throw new RuntimeException("Failed to send HTML OTP email", e);
-        } catch (java.io.UnsupportedEncodingException e) {
-            throw new RuntimeException("Failed to encode sender name", e);
+            // Construct payload for Brevo transactional email
+            Map<String, Object> payload = Map.of(
+                "sender", Map.of("name", fromName, "email", fromEmail),
+                "to", List.of(Map.of("email", toEmail)),
+                "subject", "🔑 TrustChain — Your Verification Code",
+                "htmlContent", htmlContent
+            );
+
+            String requestBody = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .header("api-key", brevoApiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .timeout(Duration.ofSeconds(10))
+                    .build();
+
+            log.info("Sending OTP email to {} via Brevo REST API...", toEmail);
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("OTP email successfully sent to {}. Response: {}", toEmail, response.body());
+            } else {
+                log.error("Failed to send OTP email via Brevo REST API. HTTP Code: {}, Response: {}", 
+                        response.statusCode(), response.body());
+                throw new RuntimeException("Brevo API returned error status: " + response.statusCode() + " - " + response.body());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send OTP email to {}", toEmail, e);
+            throw new RuntimeException("Failed to send OTP email", e);
         }
     }
 
